@@ -5,21 +5,19 @@
 
 DIGIT      [0-9]
 WHITESPACE [ \t\n]
-LETRA      [a-zA-Z]
+LETRA      [a-zA-Z_]
 
 %%
 
 "int"   {  return INT_; }
-"bool"  { return BOOL_; }
-"true"  { return TRUE_; }
-"false" { return FALSE_; }
 "read"  { return READ_; }
 "print" { return PRINT_; }
 "if"    { return IF; }
 "else"  { return ELSE; }
 "return" { return RETURN; }
-{WHITESPACE}+ 
+"for"   { return FOR; }
 "struct" {return STRUCT; }
+{WHITESPACE}+ 
 "}"  { return LLAVCER_; }
 "{"  { return LLAVABR_; }
 "]"  { return CORCER_; }
@@ -32,6 +30,8 @@ LETRA      [a-zA-Z]
 "-"  { return MENOS; }
 "/"  { return DIV; }
 "="  { return ASIGN; }
+"==" { return EQUAL; }
+"!=" { return NOT_EQUAL; }
 ">=" { return GREATER_EQUAL; }
 "<=" { return LESS_EQUAL; }
 "<"  { return LESS; }
@@ -40,11 +40,12 @@ LETRA      [a-zA-Z]
 "--" { return DEC; }
 "+=" { return ADD_ASIGN; }
 "-=" { return MENOS_ASIGN; }
-"."  { return POINT; }
+"."  { return POINT_; }
+","  { return COMMA; }
 
 {DIGIT}+ { return CTE_; }
 {LETRA}({LETRA}|{DIGIT})* { return ID_; }
-"//"+[^\n]* 
+"//"[^\n]* 
 
 
 . { printf("ERROR"); exit(1); }
