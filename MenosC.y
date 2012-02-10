@@ -1,7 +1,6 @@
 %{
 #include <stdio.h>
 extern int yylineno;
-
 %}
 
 %error-verbose
@@ -42,7 +41,7 @@ instruction : CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ 
                 expressionInstruction | ioInstruction | selectionInstruction | iterationInstruction | returnInstruction;
 expressionInstruction : SEMICOLON_ | expression SEMICOLON_;
 ioInstruction : READ_ PAR_OPEN_ ID_ PAR_CLOSE_ SEMICOLON_ | PRINT_ PAR_OPEN_ expression PAR_CLOSE_ SEMICOLON_;
-selectionInstruction : IF PAR_OPEN_ expression PAR_CLOSE_ PAR_CLOSE_ instruction ELSE instruction ;
+selectionInstruction : IF PAR_OPEN_ expression PAR_CLOSE_  instruction ELSE instruction ;
 iterationInstruction : FOR PAR_OPEN_ optionalExpression SEMICOLON_ expression SEMICOLON_ optionalExpression PAR_CLOSE_  instruction;
 optionalExpression : /* eps */ | expression;
 returnInstruction : RETURN expression SEMICOLON_ ;
