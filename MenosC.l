@@ -5,7 +5,7 @@
 
 DIGIT      [0-9]
 WHITESPACE [ \t\n]
-LETRA      [a-zA-Z_]
+LETTER      [a-zA-Z_]
 
 %%
 
@@ -18,16 +18,16 @@ LETRA      [a-zA-Z_]
 "for"   { return FOR; }
 "struct" {return STRUCT; }
 {WHITESPACE}+ 
-"}"  { return LLAVCER_; }
-"{"  { return LLAVABR_; }
-"]"  { return CORCER_; }
-"["  { return CORABR_; }
-")"  { return PARCER_; }
-"("  { return PARABR_; }
-";"  { return PUNTOYCOMA_; }
+"}"  { return CURLY_CLOSE_; }
+"{"  { return CURLY_OPEN_; }
+"]"  { return SQUARE_CLOSE_; }
+"["  { return SQUARE_OPEN_; }
+")"  { return PAR_CLOSE_; }
+"("  { return PAR_OPEN_; }
+";"  { return SEMICOLON_; }
 "+"  { return PLUS; }
 "*"  { return MULT; }
-"-"  { return MENOS; }
+"-"  { return MINUS; }
 "/"  { return DIV; }
 "="  { return ASIGN; }
 "==" { return EQUAL; }
@@ -39,12 +39,12 @@ LETRA      [a-zA-Z_]
 "++" { return INC; }
 "--" { return DEC; }
 "+=" { return ADD_ASIGN; }
-"-=" { return MENOS_ASIGN; }
+"-=" { return MINUS_ASIGN; }
 "."  { return POINT_; }
 ","  { return COMMA; }
 
-{DIGIT}+ { return CTE_; }
-{LETRA}({LETRA}|{DIGIT})* { return ID_; }
+{DIGIT}+ { return CTI_; }
+{LETTER}({LETTER}|{DIGIT})* { return ID_; }
 "//"[^\n]* 
 
 
@@ -54,7 +54,7 @@ LETRA      [a-zA-Z_]
 
 int main(int argc, char **argv) {
   if ((yyin = fopen(argv[1], "r")) == NULL)
-    fprintf(stderr, "Fichero no valido \%s", argv[1]);
+    fprintf(stderr, "Invalid file \%s", argv[1]);
   yyparse();  
 return 0;
 }
