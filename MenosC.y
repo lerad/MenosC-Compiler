@@ -1,6 +1,10 @@
 %{
 #include <stdio.h>
+#include <libtds.h>
 extern int yylineno;
+
+int level = 0;
+
 %}
 
 %error-verbose
@@ -24,20 +28,20 @@ extern int yylineno;
 %token POINT_
 %token COMMA
 %%
-program : declarationList;
+program : {level = 0; cargaContexto(level); printf("Debug: Enter level %i\n", level); }  declarationList {descargaContexto(level); printf("Debug: End of level %i\n", level);} ;
 declarationList : declaration | declarationList declaration;
 declaration : variableDeclaration | functionDeclaration;
 variableDeclaration : type ID_ SEMICOLON_ | type  ID_ SQUARE_OPEN_ CTI_ SQUARE_CLOSE_  SEMICOLON_; 
 type : INT_ | STRUCT CURLY_OPEN_ fieldList CURLY_CLOSE_;
 fieldList : variableDeclaration | fieldList variableDeclaration;
-functionDeclaration : functionHead block;
-functionHead : type ID_ PAR_OPEN_ formalParameters PAR_CLOSE_;
+functionDeclaration : functionHead block {descargaContexto(level); printf("Debug: End of level %i\n", level);  level--;} ;
+functionHead : type ID_ { level++; cargaContexto(level); printf("Debug: Enter level %i\n", level); } PAR_OPEN_  formalParameters PAR_CLOSE_ ; 
 formalParameters : /* eps */ | formalParameterList ;
 formalParameterList : type ID_ | type ID_ COMMA formalParameterList ;
 block : CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ ; 
 localVariableDeclaration : /* eps */ | localVariableDeclaration variableDeclaration;
 instructionList : /* eps */  | instructionList instruction ;
-instruction : CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ |
+instruction : {level++; cargaContexto(level); printf("Debug: Enter level %i\n", level); } CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ {descargaContexto(level); printf("Debug: End of level %i\n", level); level--; } |
                 expressionInstruction | ioInstruction | selectionInstruction | iterationInstruction | returnInstruction;
 expressionInstruction : SEMICOLON_ | expression SEMICOLON_;
 ioInstruction : READ_ PAR_OPEN_ ID_ PAR_CLOSE_ SEMICOLON_ | PRINT_ PAR_OPEN_ expression PAR_CLOSE_ SEMICOLON_;
