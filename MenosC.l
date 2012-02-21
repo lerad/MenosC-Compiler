@@ -43,8 +43,8 @@ LETTER      [a-zA-Z_]
 "."  { return POINT_; }
 ","  { return COMMA; }
 
-{DIGIT}+ { return CTI_; }
-{LETTER}({LETTER}|{DIGIT})* { return ID_; }
+{DIGIT}+ { yylval.integer = atoi(yytext); return CTI_; }
+{LETTER}({LETTER}|{DIGIT})* { yylval.id = yytext; return ID_; }
 "//"[^\n]* 
 
 

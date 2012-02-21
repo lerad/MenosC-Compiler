@@ -5,11 +5,24 @@ extern int yylineno;
 
 int level = 0;
 
+
 %}
+
+%union {
+    char *id;
+    int integer;
+    float real;
+    struct {
+        int tipo; // STRUCT or INTEGER
+        int ref; // n.ref if it is a struct
+        int size; 
+    } tipo;
+}
 
 %error-verbose
 
-%token ID_ CTI_
+%token <id> ID_ 
+%token <integer> CTI_
 %token INT_ 
 %token PRINT_ READ_
 %token ASIG_ MAS_ POR_
@@ -27,13 +40,16 @@ int level = 0;
 %token RETURN STRUCT
 %token POINT_
 %token COMMA
+
+%type <tipo> type;
+
 %%
 program : {level = 0; cargaContexto(level); printf("Debug: Enter level %i\n", level); }  declarationList {descargaContexto(level); printf("Debug: End of level %i\n", level);} ;
 declarationList : declaration | declarationList declaration;
 declaration : variableDeclaration | functionDeclaration;
-variableDeclaration : type ID_ SEMICOLON_ | type  ID_ SQUARE_OPEN_ CTI_ SQUARE_CLOSE_  SEMICOLON_; 
-type : INT_ | STRUCT CURLY_OPEN_ fieldList CURLY_CLOSE_;
-fieldList : variableDeclaration | fieldList variableDeclaration;
+variableDeclaration : type ID_ SEMICOLON_ { printf("Variable Declaration: %s \n",  $2); } | type  ID_ SQUARE_OPEN_ CTI_ SQUARE_CLOSE_  SEMICOLON_ {printf("Debug: Variable Declaration\n");}; 
+type : INT_ {$$.tipo = T_ENTERO; $$.ref = -1; $$.size = 4; /* TODO: define size as constant */}   | STRUCT CURLY_OPEN_ fieldList CURLY_CLOSE_ {$$.tipo = T_RECORD; $$.ref = -1; /* TODO: Use result of fieldList */ $$.size = -1; /* TODO: Use result of fieldlist */} ; // type integer; struct n.ref talla
+fieldList : variableDeclaration  | fieldList variableDeclaration;
 functionDeclaration : functionHead block {descargaContexto(level); printf("Debug: End of level %i\n", level);  level--;} ;
 functionHead : type ID_ { level++; cargaContexto(level); printf("Debug: Enter level %i\n", level); } PAR_OPEN_  formalParameters PAR_CLOSE_ ; 
 formalParameters : /* eps */ | formalParameterList ;
