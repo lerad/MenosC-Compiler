@@ -1,6 +1,8 @@
 %{ 
 #include <stdio.h>
 #include "MenosC.tab.h"
+#include <string.h>
+#include <stdlib.h>
 %}
 
 DIGIT      [0-9]
@@ -44,7 +46,7 @@ LETTER      [a-zA-Z_]
 ","  { return COMMA; }
 
 {DIGIT}+ { yylval.integer = atoi(yytext); return CTI_; }
-{LETTER}({LETTER}|{DIGIT})* { yylval.id = yytext; return ID_; }
+{LETTER}({LETTER}|{DIGIT})* { char *buffer = malloc(30); strcpy(buffer, yytext); yylval.id = buffer; return ID_; }
 "//"[^\n]* 
 
 
