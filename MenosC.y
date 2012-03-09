@@ -1,8 +1,12 @@
 %{
+
+#include "include/common.h"
+
 #include <stdio.h>
 #include <libtds.h>
 #include <string.h>
-extern int yylineno;
+#include<iostream>
+
 
 int level = 0;
 
@@ -109,7 +113,8 @@ unaryOperator : PLUS | MINUS;
 
 %%
 
-yyerror(char *s) 
+void yyerror(char *s) 
 {
-  printf("Line %d: %s\n", yylineno, s);
+  //printf("Line %d: %s\n", yylineno, s);
+  std::cerr << "Line " << yylineno << ": " << s << std::endl;
 }

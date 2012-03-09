@@ -1,9 +1,16 @@
 %{ 
-#include <stdio.h>
 #include "MenosC.tab.h"
+#include "include/common.h"
 #include <string.h>
 #include <stdlib.h>
+
+
+char* createId();
+
+const int MAX_ID_LEN = 30; // maximum length of id in characters
 %}
+
+/* %option c++ */
 
 DIGIT      [0-9]
 WHITESPACE [ \t\n]
@@ -46,7 +53,7 @@ LETTER      [a-zA-Z_]
 ","  { return COMMA; }
 
 {DIGIT}+ { yylval.integer = atoi(yytext); return CTI_; }
-{LETTER}({LETTER}|{DIGIT})* { char *buffer = malloc(30); strcpy(buffer, yytext); yylval.id = buffer; return ID_; }
+{LETTER}({LETTER}|{DIGIT})* {  yylval.id = createId(); return ID_; }
 "//"[^\n]* 
 
 
@@ -54,11 +61,26 @@ LETTER      [a-zA-Z_]
 
 %%
 
+
+
+char *createId()
+{
+
+int tmplen = yyleng;
+if(yyleng > MAX_ID_LEN)
+	tmplen = MAX_ID_LEN;
+char *buffer = (char*)malloc(tmplen); 
+strncpy(buffer, yytext, tmplen);
+return buffer;
+
+}
+  
+
 int main(int argc, char **argv) {
   if ((yyin = fopen(argv[1], "r")) == NULL)
     fprintf(stderr, "Invalid file \%s", argv[1]);
-  yyparse();  
-return 0;
+ return  yyparse();  
+//return 0;
 }
 
 

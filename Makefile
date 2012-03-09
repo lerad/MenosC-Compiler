@@ -1,12 +1,20 @@
 program=MenosC
 testdir=test/
-all:
-	bison -t -d MenosC.y
+CC = g++    
+CFLAGS = -lfl -ltds
+
+flex:
 	flex MenosC.l
-	gcc MenosC.c lex.yy.c MenosC.tab.c  -o program -L./lib -I./include -lfl -ltds
+
+bison:
+	bison -t -d MenosC.y
+
+
+all: bison flex	
+	$(CC) MenosC.c lex.yy.c MenosC.tab.c  -o $(program) -L./lib -I./include $(CFLAGS)
 	
 clean:
-	rm -f lex.yy.c
+	rm -f lex.yy.cc
 	rm -f MenosC.tab.c
 	rm -f MenosC.tab.h
 	rm -f *.o
