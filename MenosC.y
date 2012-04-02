@@ -98,8 +98,9 @@ const int INTEGER_SIZE = 4;
                 | functionDeclaration 
                         {
                             // TODO: Do we need DESP here? Functions don't need 'place' in this sense. But we must somewhere save the address of the function?  
-                            printf("Found function: %s\n", $1.name);
                             insertaSimbolo($1.name, FUNCION, $1.returnType, 0, level, $1.parameterRef);  
+                            printf("Show TDS after declaration of '%s' in level %i", $1.name, level);
+                            mostrarTDS(level);
                         };
 	variableDeclaration : type ID_ SEMICOLON_ 
 				        {
@@ -134,10 +135,10 @@ const int INTEGER_SIZE = 4;
                             $$.fieldsRef = insertaInfoCampo(-1, $1.name, $1.type, 0); 
                             $$.desp = $1.size;
                         };
-    | fieldList variableDeclaration
+            | fieldList variableDeclaration
                         {
                             int result = insertaInfoCampo($1.fieldsRef, $2.name, $2.type, $1.desp);
-                            if(result == -1) {/*TODO: Do error handling. This might happen, if e.g. a name is used twice */}
+                            if(result == -1) { yyerror("Multiple uses of the same identifier"); }
                             $$.desp = $1.desp + $2.size;
                             $$.fieldsRef = result; /* Is this identical to $1.fieldsRef?*/
                         };
@@ -147,7 +148,7 @@ const int INTEGER_SIZE = 4;
                             $$.returnTypeRef = $1.returnTypeRef;
                             $$.name = $1.name; 
                             $$.parameterRef = $1.parameterRef; 
-                            printf("Show TDS after declaration of '%s' in level %i", $1.name, level);
+                            printf("Show TDS before returning from the declaration of %s in level %i\n", $1.name, level);
                             mostrarTDS(level); 
                             descargaContexto(level); 
                             DebugEndLevel();  
@@ -197,10 +198,25 @@ const int INTEGER_SIZE = 4;
                           $$.desp = $4.desp + $1.size;
                         };
 	block : CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ ; 
-	localVariableDeclaration : /* eps */ | localVariableDeclaration variableDeclaration;
+	localVariableDeclaration : /* eps */ 
+            | localVariableDeclaration variableDeclaration
+                        {
+                            declareVariable(level, $2.name, $2.type, 0,  $2.size, $2.ref); /* TODO: desp */ 
+                        };
 	instructionList : /* eps */  | instructionList instruction ;
-	instruction : {level++; cargaContexto(level); DebugEnterLevel(); } CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ {mostrarTDS(level); descargaContexto(level); DebugEndLevel(); level--; } |
-			expressionInstruction | ioInstruction | selectionInstruction | iterationInstruction | returnInstruction;
+	instruction : 
+                        {
+                            level++; 
+                            cargaContexto(level); 
+                            DebugEnterLevel(); 
+                        } 
+            CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ 
+                        {
+                            mostrarTDS(level); 
+                            descargaContexto(level); 
+                            DebugEndLevel(); level--; 
+                        } 
+            | expressionInstruction | ioInstruction | selectionInstruction | iterationInstruction | returnInstruction;
 	expressionInstruction : SEMICOLON_ | expression SEMICOLON_;
 	ioInstruction : READ_ PAR_OPEN_ ID_ PAR_CLOSE_ SEMICOLON_ | PRINT_ PAR_OPEN_ expression PAR_CLOSE_ SEMICOLON_;
 	selectionInstruction : IF PAR_OPEN_ expression PAR_CLOSE_  instruction ELSE instruction ;
