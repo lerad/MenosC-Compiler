@@ -38,6 +38,10 @@ const int INTEGER_SIZE = 4;
         int desp;
         int parameterRef; // "Dominio"
     } formalParameters, formalParameterList;
+    struct {
+        int fieldsRef;
+        int desp;
+    } fieldList;
         
 }
 
@@ -69,6 +73,7 @@ const int INTEGER_SIZE = 4;
 %type <functionHead> functionHead;
 %type <formalParameters> formalParameters;
 %type <formalParameterList> formalParameterList;
+%type <fieldList> fieldList;
 
 
 	%%
@@ -87,17 +92,42 @@ const int INTEGER_SIZE = 4;
 				     $$.size = $1.size * $4; 
 				     $$.ref = insertaInfoArray($1.type, $4); 
 				     printf("Debug: Variable Declaration: %s\n", $2);} ; 
-	type : INT_ {$$.type = T_ENTERO; $$.ref = -1; $$.size = INTEGER_SIZE; }   | STRUCT CURLY_OPEN_ fieldList CURLY_CLOSE_ {$$.type = T_RECORD; $$.ref = -1; /* TODO: Use result of fieldList */ $$.size = -1; /* TODO: Use result of fieldlist */} ; // type integer; struct n.ref talla
-	fieldList : variableDeclaration  | fieldList variableDeclaration;
-	functionDeclaration : functionHead block  {
-                    $$.returnType = $1.returnType; 
-                    $$.returnTypeRef = $1.returnTypeRef;
-                    $$.name = $1.name; 
-                    $$.parameterRef = $1.parameterRef; 
-                    mostrarTDS(level); 
-                    descargaContexto(level); 
-                    DebugEndLevel();  
-                    level--;} ;
+	type : INT_ 
+                        {
+                            $$.type = T_ENTERO; 
+                            $$.ref = -1; 
+                            $$.size = INTEGER_SIZE; 
+                        } 
+          | STRUCT CURLY_OPEN_ fieldList CURLY_CLOSE_ 
+                        {
+                            $$.type = T_RECORD; 
+                            $$.ref = $3.fieldsRef; 
+                            $$.size = $3.desp; 
+                        } ; 
+	fieldList : variableDeclaration  
+                        {  
+                            // When this is a struct: Is there any problem, that the ref to the struct's fields is missing?
+                            $$.fieldsRef = insertaInfoCampo(-1, $1.name, $1.type, 0); 
+                            $$.desp = $1.size;
+                        };
+    | fieldList variableDeclaration
+                        {
+                            int result = insertaInfoCampo($1.fieldsRef, $2.name, $2.type, $1.desp);
+                            if(result == -1) {/*TODO: Do error handling. This might happen, if e.g. a name is used twice */}
+                            $$.desp = $1.desp + $2.size;
+                            $$.fieldsRef = result; /* Is this identical to $1.fieldsRef?*/
+                        };
+	functionDeclaration : functionHead block  
+                        {
+                            $$.returnType = $1.returnType; 
+                            $$.returnTypeRef = $1.returnTypeRef;
+                            $$.name = $1.name; 
+                            $$.parameterRef = $1.parameterRef; 
+                            mostrarTDS(level); 
+                            descargaContexto(level); 
+                            DebugEndLevel();  
+                            level--;
+                        } ;
 	functionHead : type ID_ 
                         {   
                             level++; 
