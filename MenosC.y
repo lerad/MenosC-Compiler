@@ -9,6 +9,7 @@
 
 
 int level = 0;
+int globalDesp = 0; // Desplacement of global variables
 const int INTEGER_SIZE = 4;
 
 
@@ -99,7 +100,8 @@ const int INTEGER_SIZE = 4;
 	declarationList : declaration | declarationList declaration;
 	declaration : variableDeclaration 
                         {
-                            declareVariable(level, $1.name, $1.type, 0,  $1.size, $1.ref); /* TODO: desp */ 
+                            declareVariable(level, $1.name, $1.type, globalDesp,  $1.size, $1.ref); /* TODO: desp */ 
+                            globalDesp += $1.size;
                         }
                 | functionDeclaration 
                         {
