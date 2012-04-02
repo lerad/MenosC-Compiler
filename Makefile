@@ -1,7 +1,10 @@
 program=MenosC
 testdir=test/
 CC = g++    
-CFLAGS = -lfl -ltds -DDEBUG
+CFLAGS = -lfl -ltds -DDEBUG -Wno-write-strings
+
+all: DebugMsg.cpp bison flex	
+	$(CC) DebugMsg.cpp MenosC.c lex.yy.c MenosC.tab.c   -o $(program) -L./lib -I./include $(CFLAGS)
 
 flex:
 	flex MenosC.l
@@ -10,8 +13,6 @@ bison:
 	bison -t -d MenosC.y
 
 
-all: DebugMsg.cpp bison flex	
-	$(CC) DebugMsg.cpp MenosC.c lex.yy.c MenosC.tab.c   -o $(program) -L./lib -I./include $(CFLAGS)
 	
 clean:
 	rm -f lex.yy.c
