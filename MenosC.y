@@ -77,21 +77,45 @@ const int INTEGER_SIZE = 4;
 
 
 	%%
-	program : {level = 0; cargaContexto(level); DebugEnterLevel(); }  declarationList {mostrarTDS(level); descargaContexto(level); DebugEndLevel(); } ;
+	program :           
+                        {
+                            level = 0; 
+                            cargaContexto(level); 
+                            DebugEnterLevel(); 
+                        }  
+                declarationList 
+                        {
+                            printf("Show TDS after end of the program. Level: %i", level);
+                            mostrarTDS(level); 
+                            descargaContexto(level); 
+                            DebugEndLevel(); 
+                        } ;
 	declarationList : declaration | declarationList declaration;
-	declaration : variableDeclaration {declareVariable(level, $1.name, $1.type, 0,  $1.size, $1.ref); /* TODO: desp */ }
-                | functionDeclaration;
+	declaration : variableDeclaration 
+                        {
+                            declareVariable(level, $1.name, $1.type, 0,  $1.size, $1.ref); /* TODO: desp */ 
+                        }
+                | functionDeclaration 
+                        {
+                            // TODO: Do we need DESP here? Functions don't need 'place' in this sense. But we must somewhere save the address of the function?  
+                            printf("Found function: %s\n", $1.name);
+                            insertaSimbolo($1.name, FUNCION, $1.returnType, 0, level, $1.parameterRef);  
+                        };
 	variableDeclaration : type ID_ SEMICOLON_ 
-				    {$$.type = $1.type; 
-				     $$.name = $2; 
-				     $$.size = $1.size; 
-				     $$.ref = $1.ref;} | 
-			      type  ID_  SQUARE_OPEN_ CTI_ SQUARE_CLOSE_  SEMICOLON_  
-				    { $$.type = T_ARRAY; 
-				     $$.name = $2; 
-				     $$.size = $1.size * $4; 
-				     $$.ref = insertaInfoArray($1.type, $4); 
-				     printf("Debug: Variable Declaration: %s\n", $2);} ; 
+				        {
+                            $$.type = $1.type; 
+                            $$.name = $2; 
+                            $$.size = $1.size; 
+                            $$.ref = $1.ref;
+                        } 
+			    |  type  ID_  SQUARE_OPEN_ CTI_ SQUARE_CLOSE_  SEMICOLON_  
+				        { 
+                            $$.type = T_ARRAY; 
+				            $$.name = $2; 
+				            $$.size = $1.size * $4; 
+				            $$.ref = insertaInfoArray($1.type, $4); 
+				            printf("Debug: Variable Declaration: %s\n", $2);
+                        } ; 
 	type : INT_ 
                         {
                             $$.type = T_ENTERO; 
@@ -123,6 +147,7 @@ const int INTEGER_SIZE = 4;
                             $$.returnTypeRef = $1.returnTypeRef;
                             $$.name = $1.name; 
                             $$.parameterRef = $1.parameterRef; 
+                            printf("Show TDS after declaration of '%s' in level %i", $1.name, level);
                             mostrarTDS(level); 
                             descargaContexto(level); 
                             DebugEndLevel();  
