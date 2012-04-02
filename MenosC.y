@@ -9,7 +9,6 @@
 
 
 int level = 0;
-
 const int INTEGER_SIZE = 4;
 
 
@@ -42,7 +41,12 @@ const int INTEGER_SIZE = 4;
         int fieldsRef;
         int desp;
     } fieldList;
-        
+    struct {
+        int desp;
+    } declarationList;
+    struct {
+        int desp;
+    } localVariableDeclaration;
 }
 
 %error-verbose
@@ -74,6 +78,8 @@ const int INTEGER_SIZE = 4;
 %type <formalParameters> formalParameters;
 %type <formalParameterList> formalParameterList;
 %type <fieldList> fieldList;
+// %type <declarationList> declarationList;
+%type <localVariableDeclaration> localVariableDeclaration;
 
 
 	%%
@@ -199,9 +205,13 @@ const int INTEGER_SIZE = 4;
                         };
 	block : CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ ; 
 	localVariableDeclaration : /* eps */ 
+                        {
+                            $$.desp = 0;
+                        }
             | localVariableDeclaration variableDeclaration
                         {
-                            declareVariable(level, $2.name, $2.type, 0,  $2.size, $2.ref); /* TODO: desp */ 
+                            declareVariable(level, $2.name, $2.type, $1.desp,  $2.size, $2.ref); 
+                            $$.desp = $1.desp + $2.size;
                         };
 	instructionList : /* eps */  | instructionList instruction ;
 	instruction : 
