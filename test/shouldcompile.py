@@ -71,7 +71,7 @@ def reprint_failed():
 
   print "run failed tests again[stdout+stderr]?"
   idx = 0
-  options = "y(run test)/n(next)/[0-"+`failedcnt-1`+"]/l(list)/q(quit)";
+  options = "t(run test)/n(next)/[0-"+`failedcnt-1`+"]/l(list)/s(see test file)/q(quit)";
   while True:
     path = relpath(failed_files[idx])
 
@@ -83,7 +83,7 @@ def reprint_failed():
      idx = (idx + 1) % failedcnt
     elif char == "q":
       break
-    elif char == "y" :
+    elif char == "t" :
       print "executing..."
       execute_test(compiler,failed_files[idx],False).wait()
       print "end"
@@ -95,7 +95,8 @@ def reprint_failed():
         i += 1
       print ""
 
-
+    elif char == "s":
+      Popen(["cat","-n",  failed_files[idx]]).wait()
     else:
       print char
       if char.isdigit():

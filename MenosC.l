@@ -4,15 +4,18 @@
 #include <string.h>
 #include <stdlib.h>
 
+int createCnumber();
+int truncCreal();
 
 char* createId();
 
-const int MAX_ID_LEN = 30; // maximum length of id in characters
+const int MAX_LENGTH = 14; // maximum length of id in characters
 %}
 
 /* %option c++ */
 
 DIGIT      [0-9]
+REAL 	   {DIGIT}+.{DIGIT}+
 WHITESPACE [ \t\n]
 LETTER      [a-zA-Z_]
 
@@ -52,7 +55,9 @@ LETTER      [a-zA-Z_]
 "."  { return POINT_; }
 ","  { return COMMA; }
 
-{DIGIT}+ { yylval.integer = atoi(yytext); return CTI_; }
+
+{REAL}  {yylval.integer = truncCreal(); return CTI_;}
+{DIGIT}+ { yylval.integer =createCnumber(); return CTI_; }
 {LETTER}({LETTER}|{DIGIT})* {  yylval.id = createId(); return ID_; }
 "//"[^\n]* 
 
@@ -62,20 +67,30 @@ LETTER      [a-zA-Z_]
 %%
 
 
-
+/*returns new allocated char* copied from yytext */
 char *createId()
 {
 
-int tmplen = yyleng;
-if(yyleng > MAX_ID_LEN)
-	tmplen = MAX_ID_LEN;
-char *buffer = (char*)malloc(tmplen); 
-strncpy(buffer, yytext, tmplen);
-return buffer;
+	if(yyleng >MAX_LENGTH)
+		yyleng = MAX_LENGTH;
+	char *buffer = (char*)malloc(yyleng + 1); 
+	strncpy(buffer, yytext, yyleng);
+  buffer[yyleng] = '\0';
+	return buffer;
 
 }
-  
 
+int truncCreal()
+{
+  return (int)atof(yytext);
+}
+
+int createCnumber()
+{
+  return atoi(yytext); 
+}
+  
+/*MAIN*/
 int main(int argc, char **argv) {
   if ((yyin = fopen(argv[1], "r")) == NULL)
     fprintf(stderr, "Invalid file \%s", argv[1]);

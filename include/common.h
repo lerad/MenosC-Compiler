@@ -4,8 +4,7 @@
 #include <stdio.h>
 
 
-
-
+extern int level;
 extern FILE* yyin;
 extern int yylex();
 extern int yyparse();
