@@ -28,6 +28,17 @@ const int INTEGER_SIZE = 4;
         int size; // In case of arrays this is not equal to type.size
         int ref;
     } variableDeclaration;
+    struct {
+        int returnType; // STRUCT or INTEGER
+        int returnTypeRef;
+        int parameterRef; 
+        char *name;
+    } functionDeclaration, functionHead;
+    struct {
+        int desp;
+        int parameterRef; // "Dominio"
+    } formalParameters, formalParameterList;
+        
 }
 
 %error-verbose
@@ -54,11 +65,17 @@ const int INTEGER_SIZE = 4;
 
 %type <type> type;
 %type <variableDeclaration> variableDeclaration;
+%type <functionDeclaration> functionDeclaration;
+%type <functionHead> functionHead;
+%type <formalParameters> formalParameters;
+%type <formalParameterList> formalParameterList;
+
 
 	%%
 	program : {level = 0; cargaContexto(level); DebugEnterLevel(); }  declarationList {mostrarTDS(level); descargaContexto(level); DebugEndLevel(); } ;
 	declarationList : declaration | declarationList declaration;
-	declaration : variableDeclaration {declareVariable(level, $1.name, $1.type, 0,  $1.size, $1.ref); /* TODO: desp */ } | functionDeclaration;
+	declaration : variableDeclaration {declareVariable(level, $1.name, $1.type, 0,  $1.size, $1.ref); /* TODO: desp */ }
+                | functionDeclaration;
 	variableDeclaration : type ID_ SEMICOLON_ 
 				    {$$.type = $1.type; 
 				     $$.name = $2; 
@@ -72,10 +89,58 @@ const int INTEGER_SIZE = 4;
 				     printf("Debug: Variable Declaration: %s\n", $2);} ; 
 	type : INT_ {$$.type = T_ENTERO; $$.ref = -1; $$.size = INTEGER_SIZE; }   | STRUCT CURLY_OPEN_ fieldList CURLY_CLOSE_ {$$.type = T_RECORD; $$.ref = -1; /* TODO: Use result of fieldList */ $$.size = -1; /* TODO: Use result of fieldlist */} ; // type integer; struct n.ref talla
 	fieldList : variableDeclaration  | fieldList variableDeclaration;
-	functionDeclaration : functionHead  block {mostrarTDS(level); descargaContexto(level); DebugEndLevel();  level--;} ;
-	functionHead : type ID_ { level++; cargaContexto(level); DebugEnterLevel(); } PAR_OPEN_  formalParameters PAR_CLOSE_ ; 
-	formalParameters : /* eps */ | formalParameterList ;
-	formalParameterList : type ID_ | type ID_ COMMA formalParameterList ;
+	functionDeclaration : functionHead block  {
+                    $$.returnType = $1.returnType; 
+                    $$.returnTypeRef = $1.returnTypeRef;
+                    $$.name = $1.name; 
+                    $$.parameterRef = $1.parameterRef; 
+                    mostrarTDS(level); 
+                    descargaContexto(level); 
+                    DebugEndLevel();  
+                    level--;} ;
+	functionHead : type ID_ 
+                        {   
+                            level++; 
+                            cargaContexto(level); 
+                            DebugEnterLevel(); 
+                        } 
+                    PAR_OPEN_  formalParameters PAR_CLOSE_  
+                        {
+                            $$.returnType = $1.type;
+                            $$.returnTypeRef = $1.ref;
+                            $$.parameterRef = $5.parameterRef; /* $5, because the action counts too! */
+                            $$.name = $2;
+                        };
+	formalParameters : /* eps */ 
+                        { 
+                            $$.desp = 0; 
+                            $$.parameterRef = insertaInfoDominio(-1, T_VACIO);
+                        }
+                    | formalParameterList 
+                        {   
+                            $$.desp = $1.desp; 
+                            $$.parameterRef = $1.parameterRef;
+                        };
+	formalParameterList : type ID_ 
+                        { 
+                          /*
+                           * TODO: Actually we are here saving the parameter as parameter into the symbol table
+                           *       but: This is lost when we leave the scope of the function. So if we later call the function
+                           *       how can we retrieve the parameters to check them if the fit the call
+                           *       I think for this we have to use the function insertaInfoDominio but there is no way to check if for example
+                           *       structs fit. 
+                           *       Btw. how do you translate dominio to english? I would think about domain, but I don't see the connection to function calls?
+                           */
+                          insertaSimbolo($2, PARAMETRO , $1.type, 0, level, $1.ref); 
+                          $$.parameterRef = insertaInfoDominio(-1, $1.type);
+                          $$.desp = $1.size;  
+                        }
+                    | type ID_ COMMA formalParameterList 
+                        {
+                          insertaSimbolo($2, PARAMETRO, $1.type, $4.desp, level, $1.ref);
+                          $$.parameterRef = insertaInfoDominio($4.parameterRef, $1.type);
+                          $$.desp = $4.desp + $1.size;
+                        };
 	block : CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ ; 
 	localVariableDeclaration : /* eps */ | localVariableDeclaration variableDeclaration;
 	instructionList : /* eps */  | instructionList instruction ;
@@ -99,12 +164,12 @@ const int INTEGER_SIZE = 4;
 	actualParameters : /* eps */ | actualParameterList
 	actualParameterList : expression | expression COMMA actualParameterList 
 	asignationOperator : ASIGN | ADD_ASIGN | MINUS_ASIGN ;
-equalityOperator : EQUAL | NOT_EQUAL;
-relationalOperator : GREATER | LESS | GREATER_EQUAL | LESS_EQUAL ;
-additiveOperator : PLUS | MINUS;
-multiplicativeOperator : MULT | DIV;
-incrementOperator : INC | DEC;
-unaryOperator : PLUS | MINUS;
+    equalityOperator : EQUAL | NOT_EQUAL;
+    relationalOperator : GREATER | LESS | GREATER_EQUAL | LESS_EQUAL ;
+    additiveOperator : PLUS | MINUS;
+    multiplicativeOperator : MULT | DIV;
+    incrementOperator : INC | DEC;
+        unaryOperator : PLUS | MINUS;
 
 
 
