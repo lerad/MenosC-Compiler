@@ -79,7 +79,6 @@ const int INTEGER_SIZE = 4;
 %type <formalParameters> formalParameters;
 %type <formalParameterList> formalParameterList;
 %type <fieldList> fieldList;
-// %type <declarationList> declarationList;
 %type <localVariableDeclaration> localVariableDeclaration;
 
 
@@ -100,12 +99,13 @@ const int INTEGER_SIZE = 4;
 	declarationList : declaration | declarationList declaration;
 	declaration : variableDeclaration 
                         {
-                            declareVariable(level, $1.name, $1.type, globalDesp,  $1.size, $1.ref); /* TODO: desp */ 
+                            declareVariable(level, $1.name, $1.type, globalDesp,  $1.size, $1.ref); 
                             globalDesp += $1.size;
                         }
                 | functionDeclaration 
                         {
-                            // TODO: Do we need DESP here? Functions don't need 'place' in this sense. But we must somewhere save the address of the function?  
+                            // TODO: Do we need DESP here? Functions don't need 'place' in this sense. 
+                            // But where do we save the address of the function? Or is this only important later in the assembler phase?
                             insertaSimbolo($1.name, FUNCION, $1.returnType, 0, level, $1.parameterRef);  
                             printf("Show TDS after declaration of '%s' in level %i", $1.name, level);
                             mostrarTDS(level);
@@ -190,9 +190,9 @@ const int INTEGER_SIZE = 4;
                           /*
                            * TODO: Actually we are here saving the parameter as parameter into the symbol table
                            *       but: This is lost when we leave the scope of the function. So if we later call the function
-                           *       how can we retrieve the parameters to check them if the fit the call
+                           *       how can we retrieve the parameters to check them if they fit to the call (statical type checking)
                            *       I think for this we have to use the function insertaInfoDominio but there is no way to check if for example
-                           *       structs fit. 
+                           *       the structs fit, as only the data that it is a struct is saved.
                            *       Btw. how do you translate dominio to english? I would think about domain, but I don't see the connection to function calls?
                            */
                           insertaSimbolo($2, PARAMETRO , $1.type, 0, level, $1.ref); 
@@ -242,8 +242,18 @@ const int INTEGER_SIZE = 4;
 	additiveExpression : multiplicativeExpression | additiveExpression additiveOperator multiplicativeExpression;
 	multiplicativeExpression : unaryExpression | multiplicativeExpression multiplicativeOperator unaryExpression;
 	unaryExpression : suffixExpression | unaryOperator unaryExpression | incrementOperator ID_;
-	suffixExpression : ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ | ID_ POINT_ ID_ | ID_ incrementOperator | 
-	    ID_ PAR_OPEN_ actualParameters PAR_CLOSE_ | PAR_OPEN_ expression PAR_CLOSE_ | ID_ | CTI_;
+	suffixExpression :
+                /* Array access */
+                 ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ 
+                /* Record access */
+                | ID_ POINT_ ID_ 
+                /* Increment/Decrement */
+                | ID_ incrementOperator 
+                /* Function call */
+                | ID_ PAR_OPEN_ actualParameters PAR_CLOSE_ 
+                | PAR_OPEN_ expression PAR_CLOSE_ 
+                | ID_ 
+                | CTI_;
 	actualParameters : /* eps */ | actualParameterList
 	actualParameterList : expression | expression COMMA actualParameterList 
 	asignationOperator : ASIGN | ADD_ASIGN | MINUS_ASIGN ;
