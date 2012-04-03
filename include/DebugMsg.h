@@ -2,11 +2,10 @@
 #define DEBUG_MSG_H
 #include<sstream>
 
-typedef std::stringstream ss;
+#define DebugStream(x) do{std::stringstream sst; sst << x; DebugMsg(sst.str().c_str()); }while(0)
 
 
   void DebugMsg(const char*);//print debug message to stdout
-  void DebugStream(const ss&);//print debug message to stdout, eg Debug.Stream(ss() << "loremipsum" << 22 )
   void DebugEnterLevel();//print entering level info
   void DebugEndLevel();//print ending level info
 

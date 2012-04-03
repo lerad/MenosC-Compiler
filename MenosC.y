@@ -91,7 +91,7 @@ const int INTEGER_SIZE = 4;
                         }  
                 declarationList 
                         {
-                            printf("Show TDS after end of the program. Level: %i", level);
+                            DebugStream("Show TDS after end of the program. Level: " << level);
                             mostrarTDS(level); 
                             descargaContexto(level); 
                             DebugEndLevel(); 
@@ -107,7 +107,7 @@ const int INTEGER_SIZE = 4;
                             // TODO: Do we need DESP here? Functions don't need 'place' in this sense. 
                             // But where do we save the address of the function? Or is this only important later in the assembler phase?
                             insertaSimbolo($1.name, FUNCION, $1.returnType, 0, level, $1.parameterRef);  
-                            printf("Show TDS after declaration of '%s' in level %i", $1.name, level);
+                            DebugStream("Show TDS after declaration of '" << $1.name << "' in level " << level);
                             mostrarTDS(level);
                         };
 	variableDeclaration : type ID_ SEMICOLON_ 
@@ -123,7 +123,7 @@ const int INTEGER_SIZE = 4;
 				            $$.name = $2; 
 				            $$.size = $1.size * $4; 
 				            $$.ref = insertaInfoArray($1.type, $4); 
-				            printf("Debug: Variable Declaration: %s\n", $2);
+						    DebugStream("Variable Declaration: " << $2 );
                         } ; 
 	type : INT_ 
                         {
@@ -156,7 +156,7 @@ const int INTEGER_SIZE = 4;
                             $$.returnTypeRef = $1.returnTypeRef;
                             $$.name = $1.name; 
                             $$.parameterRef = $1.parameterRef; 
-                            printf("Show TDS before returning from the declaration of %s in level %i\n", $1.name, level);
+                            DebugStream("Show TDS before returning from the declaration of "<< $1.name << " in level " << level);
                             mostrarTDS(level); 
                             descargaContexto(level); 
                             DebugEndLevel();  
