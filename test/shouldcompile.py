@@ -23,12 +23,13 @@ TEST_FILE
 def test_file(fpath,file):
   global totalcnt
   global failedcnt
+  shouldfail = (file[0]!='^');
 
   res = execute_test(compiler, fpath, True)
   ostring = printGREEN("OK")
   totalcnt += 1
   reswait = res.wait(); 
-  if  reswait != 0:
+  if  reswait != 0 and shouldfail:
      ostring = "[" + `failedcnt` + "]" + printRED("FAILED" + ": return code " + `reswait`)
      failedcnt += 1  
      failed_files.append(fpath)
