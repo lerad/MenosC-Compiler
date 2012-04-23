@@ -3,11 +3,14 @@
 #include "include/common.h"
 #include "include/DebugMsg.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <libtds.h>
 #include <string.h>
 #include<iostream>
 
-
+int verbose = FALSE;
+int showTDS = FALSE;
+int numErrores = 0;
 int level = 0;
 int globalDesp = 0; // Desplacement of global variables
 const int INTEGER_SIZE = 4;

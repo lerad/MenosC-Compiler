@@ -104,9 +104,10 @@ REG  obtenerInfoCampo (int ref, char *nom);
    registro referenciado por el indice "ref" en la Tabla de Registros. Si
    no se encuentra devuelve "T_ERROR" en el campo "tipo".                    */
 
-#endif  /* _LIBTDS_H */
 #ifdef __cplusplus
 }
 #endif
 
+
+#endif  /* _LIBTDS_H */
 /*****************************************************************************/

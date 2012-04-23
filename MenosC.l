@@ -1,6 +1,7 @@
 %{ 
 #include "MenosC.tab.h"
 #include "include/common.h"
+#include "include/libgci.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -92,10 +93,29 @@ int createCnumber()
   
 /*MAIN*/
 int main(int argc, char **argv) {
-  if ((yyin = fopen(argv[1], "r")) == NULL)
-    fprintf(stderr, "Invalid file \%s", argv[1]);
- return  yyparse();  
-//return 0;
+  char *fileName;
+  int i, n = 0;
+  for(i = 0; i<argc; ++i) {
+    if(strcmp(argv[i], "-v") == 0) { verbose = TRUE; n++; }
+    else if(strcmp(argv[i], "-t") == 0) { showTDS = TRUE; n++; }
+  }
+  --argc; 
+  n++;
+  
+  if (argc == n) {
+    if((yyin = fopen (argv[argc], "r")) == NULL) 
+        fprintf(stderr, "Invalid file %s\n", argv[argc]);
+    else {
+        if (verbose == TRUE) fprintf(stdout, "$3d.- ", yylineno);
+        fileName = argv[argc];
+        yyparse();
+        if (numErrores == 0) vuelcaCodigo(fileName);
+        else fprintf(stdout, "\nNumber of errors: %d\n", numErrores); 
+     }
+   }
+   else fprintf(stderr, "Usage: cmc [-v] [-t] file\n");
+
+  //return 0;
 }
 
 

@@ -4,6 +4,9 @@
 #include <stdio.h>
 
 
+extern int numErrores;
+extern int verbose;
+extern int showTDS;
 extern int level;
 extern FILE* yyin;
 extern int yylex();
@@ -13,6 +16,8 @@ extern int yylineno;
 extern "C" { void yyerror(char *s) ; }
 void declareVariable(int n, char *nom, int type, int desp, int size, int ref);
 
-
+// TODO: Is there a standard version in the stdlib?
+#define TRUE 1
+#define FALSE 0
 
 #endif   /* ----- #ifndef DEFINITIONS_INC  ----- */

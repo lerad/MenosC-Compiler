@@ -8,6 +8,10 @@
 #ifndef _LIBGCI_H
 #define _LIBGCI_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /********************************* Instrucciones del Codigo Tres Direcciones */
 #define ESUM          0
 #define EDIF          1
@@ -95,6 +99,10 @@ int creaVarTemp ();
 void vuelcaCodigo(char *nom);
 /* Vuelca el codigo generado, en modo texto, a un fichero cuyo nombre
    es el del fichero de entrada con la extension ".c3d".                     */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /* _LIBGCI_H */
 /*****************************************************************************/
