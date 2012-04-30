@@ -2,6 +2,7 @@
 
 #include "include/common.h"
 #include "include/DebugMsg.h"
+#include "include/libgci.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <libtds.h>
@@ -15,6 +16,8 @@ int level = 0;
 int globalDesp = 0; // Desplacement of global variables
 const int INTEGER_SIZE = 4;
 
+
+extern int si;
 
 %}
 %union {
@@ -34,6 +37,7 @@ const int INTEGER_SIZE = 4;
     struct {
         int returnType; // STRUCT or INTEGER
         int returnTypeRef;
+        int desp;
         int parameterRef; 
         char *name;
     } functionDeclaration, functionHead;
@@ -51,6 +55,9 @@ const int INTEGER_SIZE = 4;
     struct {
         int desp;
     } localVariableDeclaration;
+    struct {
+        int pos;
+    } expression;
 }
 
 %error-verbose
@@ -83,7 +90,13 @@ const int INTEGER_SIZE = 4;
 %type <formalParameterList> formalParameterList;
 %type <fieldList> fieldList;
 %type <localVariableDeclaration> localVariableDeclaration;
-
+%type <expression> expression;
+%type <expression> equalityExpression;
+%type <expression> relationalExpression;
+%type <expression> additiveExpression;
+%type <expression> multiplicativeExpression;
+%type <expression> unaryExpression;
+%type <expression> suffixExpression;
 
 	%%
 	program :           
@@ -91,11 +104,25 @@ const int INTEGER_SIZE = 4;
                             level = 0; 
                             cargaContexto(level); 
                             DebugEnterLevel(); 
+                            // Call main:
+                            emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(0));
+                            emite(FIN, crArgNulo(), crArgNulo(), crArgNulo());
                         }  
                 declarationList 
                         {
                             DebugStream("Show TDS after end of the program. Level: " << level);
                             mostrarTDS(level); 
+
+                            DebugStream("Let us see the TDS after the program:" );                            
+                            mostrarTDS(level);
+                            SIMB main = obtenerSimbolo("main");
+                            if(main.categoria != FUNCION) {
+                               yyerror("Function main does not exist!\n"); 
+                            }
+                            int siOld = si;
+                            si = 0;
+                            emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(main.desp));
+                            si = siOld;
                             descargaContexto(level); 
                             DebugEndLevel(); 
                         } ;
@@ -109,7 +136,7 @@ const int INTEGER_SIZE = 4;
                         {
                             // TODO: Do we need DESP here? Functions don't need 'place' in this sense. 
                             // But where do we save the address of the function? Or is this only important later in the assembler phase?
-                            insertaSimbolo($1.name, FUNCION, $1.returnType, 0, level, $1.parameterRef);  
+                            insertaSimbolo($1.name, FUNCION, $1.returnType, $1.desp, level, $1.parameterRef);  
                             DebugStream("Show TDS after declaration of '" << $1.name << "' in level " << level);
                             mostrarTDS(level);
                         };
@@ -155,12 +182,16 @@ const int INTEGER_SIZE = 4;
                         };
 	functionDeclaration : functionHead block  
                         {
+                            $$.desp = $1.desp;
                             $$.returnType = $1.returnType; 
                             $$.returnTypeRef = $1.returnTypeRef;
                             $$.name = $1.name; 
                             $$.parameterRef = $1.parameterRef; 
                             DebugStream("Show TDS before returning from the declaration of "<< $1.name << " in level " << level);
                             mostrarTDS(level); 
+
+                            emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
+
                             descargaContexto(level); 
                             DebugEndLevel();  
                             level--;
@@ -177,6 +208,7 @@ const int INTEGER_SIZE = 4;
                             $$.returnTypeRef = $1.ref;
                             $$.parameterRef = $5.parameterRef; /* $5, because the action counts too! */
                             $$.name = $2;
+                            $$.desp = si;
                         };
 	formalParameters : /* eps */ 
                         { 
@@ -208,7 +240,19 @@ const int INTEGER_SIZE = 4;
                           $$.parameterRef = insertaInfoDominio($4.parameterRef, $1.type);
                           $$.desp = $4.desp + $1.size;
                         };
-	block : CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ ; 
+	block : CURLY_OPEN_ localVariableDeclaration 
+                        {
+                            // We increase the stack by $2.desp elements to save the local variables there
+                            emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero($2.desp)); 
+                        }
+                        instructionList 
+                        {
+                            // Remove the place for local variables
+                            emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero($2.desp));
+                            // TODO:
+                            // We have to get the return address from the stack and jump to this place
+                        }
+                        CURLY_CLOSE_ ; 
 	localVariableDeclaration : /* eps */ 
                         {
                             $$.desp = 0;
@@ -233,30 +277,108 @@ const int INTEGER_SIZE = 4;
                         } 
             | expressionInstruction | ioInstruction | selectionInstruction | iterationInstruction | returnInstruction;
 	expressionInstruction : SEMICOLON_ | expression SEMICOLON_;
-	ioInstruction : READ_ PAR_OPEN_ ID_ PAR_CLOSE_ SEMICOLON_ | PRINT_ PAR_OPEN_ expression PAR_CLOSE_ SEMICOLON_;
+	ioInstruction : READ_ PAR_OPEN_ ID_ PAR_CLOSE_ SEMICOLON_ 
+            | PRINT_ PAR_OPEN_ expression PAR_CLOSE_ SEMICOLON_ 
+                        {
+                            
+                            TIPO_ARG arg = crArgEntero(4); // TODO: Insert expression value
+                            emite(EWRITE, crArgNulo(), crArgNulo(), arg);
+                        };
 	selectionInstruction : IF PAR_OPEN_ expression PAR_CLOSE_  instruction ELSE instruction ;
 	iterationInstruction : FOR PAR_OPEN_ optionalExpression SEMICOLON_ expression SEMICOLON_ optionalExpression PAR_CLOSE_  instruction;
 	optionalExpression : /* eps */ | expression;
 	returnInstruction : RETURN expression SEMICOLON_ ;
-	expression : equalityExpression | ID_ asignationOperator expression | ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ asignationOperator expression | 
-		     ID_ POINT_ ID_ asignationOperator expression;
-	equalityExpression : relationalExpression | equalityExpression equalityOperator relationalExpression ;
-	relationalExpression : additiveExpression | relationalExpression relationalOperator additiveExpression ;
-	additiveExpression : multiplicativeExpression | additiveExpression additiveOperator multiplicativeExpression;
-	multiplicativeExpression : unaryExpression | multiplicativeExpression multiplicativeOperator unaryExpression;
-	unaryExpression : suffixExpression | unaryOperator unaryExpression | incrementOperator ID_;
+	expression : equalityExpression 
+                        {
+                            $$.pos = $1.pos;
+                        }
+            | ID_ asignationOperator expression 
+                        {
+                            SIMB id = obtenerSimbolo($1);
+                            if(id.categoria == NULO) {
+                                printf("The variable %s is not declared.", $1);
+                                yyerror("Variable declaration failed");
+                            }
+                            else {
+                                emite(EASIG, crArgPosicion(level, $3.pos), crArgNulo(), crArgPosicion(level, id.desp)); 
+                                $$.pos = id.desp;
+                            }
+                        }
+            | ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ asignationOperator expression 
+                        {
+                            $$.pos = 0; // TODO: implement
+                        }
+
+            | ID_ POINT_ ID_ asignationOperator expression 
+                        {
+                            $$.pos = 0; // TODO: implement
+                        };
+	equalityExpression : relationalExpression 
+                        {
+                            $$.pos = $1.pos;
+                        }
+                | equalityExpression equalityOperator relationalExpression ;
+	relationalExpression : additiveExpression 
+                        {
+                            $$.pos = $1.pos;
+                        }
+                | relationalExpression relationalOperator additiveExpression ;
+	additiveExpression : multiplicativeExpression 
+                        {
+                            $$.pos = $1.pos;
+                        }
+                | additiveExpression additiveOperator multiplicativeExpression;
+	multiplicativeExpression : unaryExpression 
+                        {
+                            $$.pos = $1.pos;
+                        }
+
+                | multiplicativeExpression multiplicativeOperator unaryExpression;
+	unaryExpression : suffixExpression 
+                        {
+                            $$.pos = $1.pos;
+                        }
+                | unaryOperator unaryExpression 
+                        {
+                            $$.pos = 0; // TODO: implement
+                        }
+                | incrementOperator ID_
+                        {
+                            $$.pos = 0;
+                        };
 	suffixExpression :
                 /* Array access */
                  ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ 
+                        {
+                            $$.pos = 0; // TODO: implement
+                        }
                 /* Record access */
                 | ID_ POINT_ ID_ 
+                        {
+                            $$.pos = 0; // TODO: implement
+                        }
                 /* Increment/Decrement */
                 | ID_ incrementOperator 
+                        {
+                            $$.pos = 0;
+                        }
                 /* Function call */
                 | ID_ PAR_OPEN_ actualParameters PAR_CLOSE_ 
+                        {
+                            $$.pos = 0;
+                        }
                 | PAR_OPEN_ expression PAR_CLOSE_ 
+                        {
+                            $$.pos = $2.pos;
+                        }
                 | ID_ 
-                | CTI_;
+                        {
+                            $$.pos = 0;
+                        }
+                | CTI_ {
+                    $$.pos = creaVarTemp() ;
+                    emite(EASIG, crArgEntero($1), crArgNulo(), crArgPosicion(level, $$.pos));
+                };
 	actualParameters : /* eps */ | actualParameterList
 	actualParameterList : expression | expression COMMA actualParameterList 
 	asignationOperator : ASIGN | ADD_ASIGN | MINUS_ASIGN ;
