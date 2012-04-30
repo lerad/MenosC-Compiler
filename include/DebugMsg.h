@@ -3,6 +3,7 @@
 #include<sstream>
 
 #define DebugStream(x) do{std::stringstream sst; sst << x; DebugMsg(sst.str().c_str()); }while(0)
+#define ErrorStream(x) do{std::stringstream sst; sst << x; yyerror((char*)sst.str().c_str()); }while(0)
 
 
   void DebugMsg(const char*);//print debug message to stdout
