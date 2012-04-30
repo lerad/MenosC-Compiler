@@ -57,6 +57,7 @@ extern int si;
     } localVariableDeclaration;
     struct {
         int pos;
+        int tipo; //TODO : Use type
     } expression;
 }
 
@@ -271,6 +272,7 @@ extern int si;
                         } 
             CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ 
                         {
+                            // TODO: We have to save place on the stack too!
                             mostrarTDS(level); 
                             descargaContexto(level); 
                             DebugEndLevel(); level--; 
