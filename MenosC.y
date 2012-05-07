@@ -15,7 +15,7 @@ int showTDS = FALSE;
 int numErrores = 0;
 int level = 0;
 int globalDesp = 0; // Desplacement of global variables
-const int INTEGER_SIZE = 4;
+const int INTEGER_SIZE = 1;
 
 extern int si;
 extern int dvar;
@@ -103,7 +103,6 @@ extern int dvar;
 %type <expression> multiplicativeExpression;
 %type <expression> unaryExpression;
 %type <expression> suffixExpression;
-%type <block> block;
 	%%
 	program :           
                         {
@@ -247,25 +246,29 @@ extern int dvar;
                           $$.desp = $4.desp + $1.size;
                         };
 	block : CURLY_OPEN_ localVariableDeclaration 
-                        {
+                        { 
                             // We add a dummy increment here, which we later overwrite
                             $<block>$.oldDvar = dvar;
                             $<block>$.siStackIncrement = si;
+                            DebugStream("Save si = " << si << " for level " << level);
+                            DebugStream("Save dvar = " << dvar << " for level " << level);
                             emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(0)); 
                             dvar = $2.desp + 1;
 
                         }
                         instructionList 
-                        {
+                        { 
                             // Overwrite the increment at the begin of the block
                             int oldsi = si;
-                            si = $<block>$.siStackIncrement;
+                            si = $<block>3.siStackIncrement;
+                            DebugStream("Load si = " << $<block>3.siStackIncrement << " for level " << level);
+                            DebugStream("Load dvar = " << $<block>3.oldDvar << " for level " << level);
                             emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(dvar));
                             si = oldsi;
 
                             // Remove the place for local variables
                             emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(dvar));
-                            dvar = $<block>$.oldDvar;
+                            dvar = $<block>3.oldDvar;
                             
                             // TODO:
                             // We have to get the return address from the stack and jump to this place
