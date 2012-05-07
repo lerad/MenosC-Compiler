@@ -7,7 +7,8 @@
 #include <stdlib.h>
 #include <libtds.h>
 #include <string.h>
-#include<iostream>
+#include <iostream>
+#include <vector>
 
 int verbose = FALSE;
 int showTDS = FALSE;
@@ -16,8 +17,8 @@ int level = 0;
 int globalDesp = 0; // Desplacement of global variables
 const int INTEGER_SIZE = 4;
 
-
 extern int si;
+extern int dvar;
 
 %}
 %union {
@@ -59,6 +60,10 @@ extern int si;
         int pos;
         int tipo; //TODO : Use type
     } expression;
+    struct {
+        int siStackIncrement;
+        int oldDvar;
+    } block;
 }
 
 %error-verbose
@@ -98,7 +103,7 @@ extern int si;
 %type <expression> multiplicativeExpression;
 %type <expression> unaryExpression;
 %type <expression> suffixExpression;
-
+%type <block> block;
 	%%
 	program :           
                         {
@@ -243,17 +248,29 @@ extern int si;
                         };
 	block : CURLY_OPEN_ localVariableDeclaration 
                         {
-                            // We increase the stack by $2.desp elements to save the local variables there
-                            emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero($2.desp)); 
+                            // We add a dummy increment here, which we later overwrite
+                            $<block>$.oldDvar = dvar;
+                            $<block>$.siStackIncrement = si;
+                            emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(0)); 
+                            dvar = $2.desp + 1;
+
                         }
                         instructionList 
                         {
+                            // Overwrite the increment at the begin of the block
+                            int oldsi = si;
+                            si = $<block>$.siStackIncrement;
+                            emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(dvar));
+                            si = oldsi;
+
                             // Remove the place for local variables
-                            emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero($2.desp));
+                            emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(dvar));
+                            dvar = $<block>$.oldDvar;
+                            
                             // TODO:
                             // We have to get the return address from the stack and jump to this place
                         }
-                        CURLY_CLOSE_ ; 
+                        CURLY_CLOSE_ ;  ; 
 	localVariableDeclaration : /* eps */ 
                         {
                             $$.desp = 0;
@@ -378,6 +395,7 @@ extern int si;
                             $$.pos = 0;
                         }
                 | CTI_ {
+                    
                     $$.pos = creaVarTemp() ;
                     emite(EASIG, crArgEntero($1), crArgNulo(), crArgPosicion(level, $$.pos));
                 };
