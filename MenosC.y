@@ -57,7 +57,7 @@ extern int dvar;
         int desp;
     } localVariableDeclaration;
     struct {
-        int pos;
+        TIPO_ARG pos;
         int tipo; //TODO : Use type
     } expression;
     struct {
@@ -234,6 +234,7 @@ extern int dvar;
                            *       I think for this we have to use the function insertaInfoDominio but there is no way to check if for example
                            *       the structs fit, as only the data that it is a struct is saved.
                            *       Btw. how do you translate dominio to english? I would think about domain, but I don't see the connection to function calls?
+                           * ANSWER: Yes, we have to use this (insertaInfoDominio)
                            */
                           insertaSimbolo($2, PARAMETRO , $1.type, 0, level, $1.ref); 
                           $$.parameterRef = insertaInfoDominio(-1, $1.type);
@@ -302,9 +303,7 @@ extern int dvar;
 	ioInstruction : READ_ PAR_OPEN_ ID_ PAR_CLOSE_ SEMICOLON_ 
             | PRINT_ PAR_OPEN_ expression PAR_CLOSE_ SEMICOLON_ 
                         {
-                            
-                            TIPO_ARG arg = crArgEntero(4); // TODO: Insert expression value
-                            emite(EWRITE, crArgNulo(), crArgNulo(), arg);
+                            emite(EWRITE, crArgNulo(), crArgNulo(), $3.pos);
                         };
 	selectionInstruction : IF PAR_OPEN_ expression PAR_CLOSE_  instruction ELSE instruction ;
 	iterationInstruction : FOR PAR_OPEN_ optionalExpression SEMICOLON_ expression SEMICOLON_ optionalExpression PAR_CLOSE_  instruction;
@@ -322,18 +321,18 @@ extern int dvar;
                                 yyerror("Variable declaration failed");
                             }
                             else {
-                                emite(EASIG, crArgPosicion(level, $3.pos), crArgNulo(), crArgPosicion(level, id.desp)); 
-                                $$.pos = id.desp;
+                                emite(EASIG, $3.pos, crArgNulo(), crArgPosicion(level, id.desp)); 
+                                $$.pos = crArgPosicion(level, id.desp);
                             }
                         }
             | ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ asignationOperator expression 
                         {
-                            $$.pos = 0; // TODO: implement
+                            $$.pos = crArgPosicion(level,0); // TODO: implement
                         }
 
             | ID_ POINT_ ID_ asignationOperator expression 
                         {
-                            $$.pos = 0; // TODO: implement
+                            $$.pos = crArgPosicion(level,0); // TODO: implement
                         };
 	equalityExpression : relationalExpression 
                         {
@@ -362,32 +361,32 @@ extern int dvar;
                         }
                 | unaryOperator unaryExpression 
                         {
-                            $$.pos = 0; // TODO: implement
+                            $$.pos = crArgPosicion(level,0); // TODO: implement
                         }
                 | incrementOperator ID_
                         {
-                            $$.pos = 0;
+                            $$.pos = crArgPosicion(level,0); // TODO: implement
                         };
 	suffixExpression :
                 /* Array access */
                  ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ 
                         {
-                            $$.pos = 0; // TODO: implement
+                            $$.pos = crArgPosicion(level,0); // TODO: implement
                         }
                 /* Record access */
                 | ID_ POINT_ ID_ 
                         {
-                            $$.pos = 0; // TODO: implement
+                            $$.pos = crArgPosicion(level,0); // TODO: implement
                         }
                 /* Increment/Decrement */
                 | ID_ incrementOperator 
                         {
-                            $$.pos = 0;
+                            $$.pos = crArgPosicion(level,0); // TODO: implement
                         }
                 /* Function call */
                 | ID_ PAR_OPEN_ actualParameters PAR_CLOSE_ 
                         {
-                            $$.pos = 0;
+                            $$.pos = crArgPosicion(level, 0); // TODO: implement
                         }
                 | PAR_OPEN_ expression PAR_CLOSE_ 
                         {
@@ -395,12 +394,12 @@ extern int dvar;
                         }
                 | ID_ 
                         {
-                            $$.pos = 0;
+                            $$.pos = crArgPosicion(level, 0); // TODO: Implement
                         }
                 | CTI_ {
                     
-                    $$.pos = creaVarTemp() ;
-                    emite(EASIG, crArgEntero($1), crArgNulo(), crArgPosicion(level, $$.pos));
+                    $$.pos = crArgPosicion(level, creaVarTemp()) ;
+                    emite(EASIG, crArgEntero($1), crArgNulo(), $$.pos);
                 };
 	actualParameters : /* eps */ | actualParameterList
 	actualParameterList : expression | expression COMMA actualParameterList 

@@ -1,9 +1,9 @@
 %{ 
-#include "MenosC.tab.h"
 #include "include/common.h"
 #include "include/libgci.h"
 #include <string.h>
 #include <stdlib.h>
+#include "MenosC.tab.h"
 
 int createCnumber();
 int truncCreal();
