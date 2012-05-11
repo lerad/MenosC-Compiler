@@ -106,6 +106,7 @@ extern int dvar;
 %type <expression> multiplicativeExpression;
 %type <expression> unaryExpression;
 %type <expression> suffixExpression;
+%type <expression> optionalExpression;
 %type <incrementOperator> incrementOperator;
 %type <multiplicativeOperator> multiplicativeOperator;
 %type <additiveOperator> additiveOperator;
@@ -316,7 +317,7 @@ extern int dvar;
 	iterationInstruction : FOR PAR_OPEN_ optionalExpression SEMICOLON_ expression SEMICOLON_ optionalExpression PAR_CLOSE_  instruction;
 	optionalExpression : /* eps */
                         {
-                            $$.tipo = T_VACIA;
+                            $$.tipo = T_VACIO;
                         } | expression;
 	returnInstruction : RETURN expression SEMICOLON_ ;
 	expression : equalityExpression 
@@ -352,9 +353,9 @@ extern int dvar;
                 | equalityExpression equalityOperator relationalExpression ;
 	relationalExpression : additiveExpression 
                         {
-                            $$.pos = creaArgPosicion(level, creaVarTemp());
+                            $$.pos = crArgPosicion(level, creaVarTemp());
                             $$.tipo = T_LOGICO;
-                            emite(ETOB, $$.pos, creaArgNulo(), $$.pos);
+                            emite(ETOB, $$.pos, crArgNulo(), $$.pos);
                             
                         }
                 | relationalExpression relationalOperator additiveExpression 
@@ -368,7 +369,7 @@ extern int dvar;
                         }
                 | additiveExpression additiveOperator multiplicativeExpression 
                         {
-                            $$.pos = creaArgPosicion(level, creaVarTemp());
+                            $$.pos = crArgPosicion(level, creaVarTemp());
                             $$.tipo = T_ENTERO;
                             emite($2, $1.pos, $3.pos, $$.pos);
                         };
@@ -380,7 +381,7 @@ extern int dvar;
 
                 | multiplicativeExpression multiplicativeOperator unaryExpression 
                         {
-                            $$.pos = creaArgPosicion(level, creaVarTemp());
+                            $$.pos = crArgPosicion(level, creaVarTemp());
                             $$.tipo = T_ENTERO;
                             emite($2, $1.pos, $3.pos, $$.pos);
                         };
@@ -391,7 +392,7 @@ extern int dvar;
                         }
                 | unaryOperator unaryExpression 
                         {   
-                            TIPO_ARG res = crArgPoscion(level, creaVarTemp());
+                            TIPO_ARG res = crArgPosicion(level, creaVarTemp());
                             emite(ESIG, $2.pos, crArgNulo(), res);
                             $$.pos = res;
                             $$.tipo = $2.tipo;
@@ -425,11 +426,11 @@ extern int dvar;
                         {
                             // 
                             SIMB sim = obtenerSimbolo($1);
-                            TIPO_ARG posId = creaArgPosicion(sim.nivel, sim.desp);
+                            TIPO_ARG posId = crArgPosicion(sim.nivel, sim.desp);
                             $$.tipo = T_ENTERO;
                             $$.pos = crArgPosicion(level, creaVarTemp()); // TODO: implement
                             emite(EASIG, posId, crArgNulo(), $$.pos);
-                            emite($1, posId, crArgNulo(), posId);
+                            emite($2, posId, crArgNulo(), posId);
                         }
                 /* Function call */
                 | ID_ PAR_OPEN_ actualParameters PAR_CLOSE_ 
