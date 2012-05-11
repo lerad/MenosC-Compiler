@@ -15,6 +15,8 @@ int showTDS = FALSE;
 int numErrores = 0;
 int level = 0;
 int globalDesp = 0; // Desplacement of global variables
+int parameterSize = 0; // TODO: is there any better way to do this??
+
 const int INTEGER_SIZE = 1;
 
 extern int si;
@@ -227,11 +229,13 @@ extern int dvar;
                         };
 	formalParameters : /* eps */ 
                         { 
+                            parameterSize = 0;
                             $$.desp = 0; 
                             $$.parameterRef = insertaInfoDominio(-1, T_VACIO);
                         }
                     | formalParameterList 
                         {   
+                            parameterSize = $$.desp;
                             $$.desp = $1.desp; 
                             $$.parameterRef = $1.parameterRef;
                         };
@@ -297,6 +301,7 @@ extern int dvar;
 	instructionList : /* eps */  | instructionList instruction ;
 	instruction : 
                         {
+                            // TODO: save dvar and later remove it.
                             level++; 
                             cargaContexto(level); 
                             DebugEnterLevel(); 
@@ -320,7 +325,17 @@ extern int dvar;
                         {
                             $$.tipo = T_VACIO;
                         } | expression;
-	returnInstruction : RETURN expression SEMICOLON_ ;
+	returnInstruction : RETURN expression SEMICOLON_ 
+                        {
+                             // TODO: We should understand a little more of the stack and be prepared to explain why we use 1
+                             TIPO_ARG posReturn = crArgPosicion(level, parameterSize - 1);
+                             DebugStream("Posreturn: " << parameterSize - 1 );
+                             emite(EASIG, $2.pos, crArgNulo(), posReturn);
+                             emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(dvar));
+                             emite(FPPOP, crArgNulo(), crArgNulo(), crArgNulo());
+                             
+                             emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
+                        };
 	expression : equalityExpression 
                         {
                             $$.pos = $1.pos;
