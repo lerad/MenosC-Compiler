@@ -304,7 +304,6 @@ extern int dvar;
             CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ 
                         {
                             // TODO: We have to save place on the stack too!
-                            mostrarTDS(level); 
                             descargaContexto(level); 
                             DebugEndLevel(); level--; 
                         } 
@@ -463,10 +462,22 @@ extern int dvar;
                             emite($2, posId, crArgEntero(1), posId);
                         }
                 /* Function call */
-                | ID_ PAR_OPEN_ actualParameters PAR_CLOSE_ 
+                | ID_ PAR_OPEN_ 
+                        {
+                            // TODO: save space on stack for the return value
+                            // TODO: Can we land here ONLY during a function call?
+                            emite(EPUSH,crArgNulo(), crArgNulo(), crArgEntero(0)); // Reserve space for the return value
+    
+                        }
+                            actualParameters PAR_CLOSE_ 
                         {
                             // TODO: implement function call
-                            $$.pos = crArgPosicion(level, 0); // TODO: implement
+                            SIMB s = obtenerSimbolo($1);
+                            INF fun = obtenerInfoFuncion(s.ref);
+                            emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(s.desp));
+                            emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(fun.tparam));
+                            $$.pos = crArgPosicion(level, creaVarTemp()); 
+                            emite(EPOP, crArgNulo(), crArgNulo(), $$.pos);
                         }
                 | PAR_OPEN_ expression PAR_CLOSE_ 
                         {
@@ -485,7 +496,14 @@ extern int dvar;
                     emite(EASIG, crArgEntero($1), crArgNulo(), $$.pos);
                 };
 	actualParameters : /* eps */ | actualParameterList
-	actualParameterList : expression | expression COMMA actualParameterList 
+	actualParameterList : expression 
+                                {
+                                    emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
+                                }
+                        | expression COMMA actualParameterList  
+                                {
+                                    emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
+                                };
 	asignationOperator : ASIGN 
                                 {
                                     $$ = ASIGN;
