@@ -64,6 +64,9 @@ extern int dvar;
         int siStackIncrement;
         int oldDvar;
     } block;
+    int incrementOperator;
+    int multiplicativeOperator;
+    int additiveOperator;
 }
 
 %error-verbose
@@ -103,6 +106,10 @@ extern int dvar;
 %type <expression> multiplicativeExpression;
 %type <expression> unaryExpression;
 %type <expression> suffixExpression;
+%type <incrementOperator> incrementOperator;
+%type <multiplicativeOperator> multiplicativeOperator;
+%type <additiveOperator> additiveOperator;
+
 	%%
 	program :           
                         {
@@ -307,7 +314,10 @@ extern int dvar;
                         };
 	selectionInstruction : IF PAR_OPEN_ expression PAR_CLOSE_  instruction ELSE instruction ;
 	iterationInstruction : FOR PAR_OPEN_ optionalExpression SEMICOLON_ expression SEMICOLON_ optionalExpression PAR_CLOSE_  instruction;
-	optionalExpression : /* eps */ | expression;
+	optionalExpression : /* eps */
+                        {
+                            $$.tipo = T_VACIA;
+                        } | expression;
 	returnInstruction : RETURN expression SEMICOLON_ ;
 	expression : equalityExpression 
                         {
@@ -337,34 +347,66 @@ extern int dvar;
 	equalityExpression : relationalExpression 
                         {
                             $$.pos = $1.pos;
+                            $$.tipo = $1.tipo;
                         }
                 | equalityExpression equalityOperator relationalExpression ;
 	relationalExpression : additiveExpression 
                         {
-                            $$.pos = $1.pos;
+                            $$.pos = creaArgPosicion(level, creaVarTemp());
+                            $$.tipo = T_LOGICO;
+                            emite(ETOB, $$.pos, creaArgNulo(), $$.pos);
+                            
                         }
-                | relationalExpression relationalOperator additiveExpression ;
+                | relationalExpression relationalOperator additiveExpression 
+                        {
+                            // TODO: implement
+                        };
 	additiveExpression : multiplicativeExpression 
                         {
                             $$.pos = $1.pos;
+                            $$.tipo = $1.tipo;
                         }
-                | additiveExpression additiveOperator multiplicativeExpression;
+                | additiveExpression additiveOperator multiplicativeExpression 
+                        {
+                            $$.pos = creaArgPosicion(level, creaVarTemp());
+                            $$.tipo = T_ENTERO;
+                            emite($2, $1.pos, $3.pos, $$.pos);
+                        };
 	multiplicativeExpression : unaryExpression 
                         {
                             $$.pos = $1.pos;
+                            $$.tipo = $1.tipo;
                         }
 
-                | multiplicativeExpression multiplicativeOperator unaryExpression;
+                | multiplicativeExpression multiplicativeOperator unaryExpression 
+                        {
+                            $$.pos = creaArgPosicion(level, creaVarTemp());
+                            $$.tipo = T_ENTERO;
+                            emite($2, $1.pos, $3.pos, $$.pos);
+                        };
 	unaryExpression : suffixExpression 
                         {
+                            $$.tipo = $1.tipo;
                             $$.pos = $1.pos;
                         }
                 | unaryOperator unaryExpression 
-                        {
-                            $$.pos = crArgPosicion(level,0); // TODO: implement
+                        {   
+                            TIPO_ARG res = crArgPoscion(level, creaVarTemp());
+                            emite(ESIG, $2.pos, crArgNulo(), res);
+                            $$.pos = res;
+                            $$.tipo = $2.tipo;
                         }
                 | incrementOperator ID_
                         {
+                            // Do we have to make the program failsave 
+                            // Example: ID_ = struct
+                            SIMB sim; 
+                            TIPO_ARG res;
+                            $$.tipo = T_ENTERO;
+                            res = crArgPosicion(sim.nivel, sim.desp);
+                            $$.pos = crArgPosicion(level, creaVarTemp());
+                            emite($1, res, crArgEntero(1), res);
+                            emite(EASIG, res, crArgNulo(), $$.pos);
                             $$.pos = crArgPosicion(level,0); // TODO: implement
                         };
 	suffixExpression :
@@ -381,23 +423,33 @@ extern int dvar;
                 /* Increment/Decrement */
                 | ID_ incrementOperator 
                         {
-                            $$.pos = crArgPosicion(level,0); // TODO: implement
+                            // 
+                            SIMB sim = obtenerSimbolo($1);
+                            TIPO_ARG posId = creaArgPosicion(sim.nivel, sim.desp);
+                            $$.tipo = T_ENTERO;
+                            $$.pos = crArgPosicion(level, creaVarTemp()); // TODO: implement
+                            emite(EASIG, posId, crArgNulo(), $$.pos);
+                            emite($1, posId, crArgNulo(), posId);
                         }
                 /* Function call */
                 | ID_ PAR_OPEN_ actualParameters PAR_CLOSE_ 
                         {
+                            // TODO: implement function call
                             $$.pos = crArgPosicion(level, 0); // TODO: implement
                         }
                 | PAR_OPEN_ expression PAR_CLOSE_ 
                         {
                             $$.pos = $2.pos;
+                            $$.tipo = $2.tipo;
                         }
                 | ID_ 
                         {
-                            $$.pos = crArgPosicion(level, 0); // TODO: Implement
+                            SIMB s = obtenerSimbolo($1);
+                            $$.pos = crArgPosicion(s.nivel, s.desp); // TODO: Implement
+                            $$.tipo = s.tipo;
                         }
                 | CTI_ {
-                    
+                    $$.tipo = T_ENTERO;
                     $$.pos = crArgPosicion(level, creaVarTemp()) ;
                     emite(EASIG, crArgEntero($1), crArgNulo(), $$.pos);
                 };
@@ -406,9 +458,29 @@ extern int dvar;
 	asignationOperator : ASIGN | ADD_ASIGN | MINUS_ASIGN ;
     equalityOperator : EQUAL | NOT_EQUAL;
     relationalOperator : GREATER | LESS | GREATER_EQUAL | LESS_EQUAL ;
-    additiveOperator : PLUS | MINUS;
-    multiplicativeOperator : MULT | DIV;
-    incrementOperator : INC | DEC;
+    additiveOperator : PLUS     
+                        {
+                            $$ = ESUM;
+                        }
+                | MINUS 
+                        {
+                            $$ = EDIF;
+                        };
+    multiplicativeOperator : MULT 
+                        {
+                            $$ = EMULT;
+                        }
+                | DIV
+                        {
+                            $$ = EDIVI;
+                        };
+    incrementOperator : 
+                  INC {
+                    $$ = ESUM;
+                }
+                | DEC {
+                    $$ = EDIF;
+                };
         unaryOperator : PLUS | MINUS;
 
 
