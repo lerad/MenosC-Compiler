@@ -257,6 +257,8 @@ extern int dvar;
 	block : CURLY_OPEN_ localVariableDeclaration 
                         { 
                             // We add a dummy increment here, which we later overwrite
+                            emite(PUSHFP, crArgNulo(), crArgNulo(), crArgNulo());
+                            emite(FPTOP, crArgNulo(), crArgNulo(), crArgNulo());
                             $<block>$.oldDvar = dvar;
                             $<block>$.siStackIncrement = si;
                             DebugStream("Save si = " << si << " for level " << level);
@@ -277,10 +279,8 @@ extern int dvar;
 
                             // Remove the place for local variables
                             emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(dvar));
+                            emite(FPPOP, crArgNulo(), crArgNulo(), crArgNulo());
                             dvar = $<block>3.oldDvar;
-                            
-                            // TODO:
-                            // We have to get the return address from the stack and jump to this place
                         }
                         CURLY_CLOSE_ ;  ; 
 	localVariableDeclaration : /* eps */ 
@@ -353,9 +353,11 @@ extern int dvar;
                 | equalityExpression equalityOperator relationalExpression ;
 	relationalExpression : additiveExpression 
                         {
-                            $$.pos = crArgPosicion(level, creaVarTemp());
+                            /*$$.pos = crArgPosicion(level, creaVarTemp());
                             $$.tipo = T_LOGICO;
-                            emite(ETOB, $$.pos, crArgNulo(), $$.pos);
+                            emite(ETOB, $$.pos, crArgNulo(), $$.pos);*/
+                            $$.pos = $1.pos;
+                            $$.tipo = $1.tipo;
                             
                         }
                 | relationalExpression relationalOperator additiveExpression 
@@ -430,7 +432,7 @@ extern int dvar;
                             $$.tipo = T_ENTERO;
                             $$.pos = crArgPosicion(level, creaVarTemp()); // TODO: implement
                             emite(EASIG, posId, crArgNulo(), $$.pos);
-                            emite($2, posId, crArgNulo(), posId);
+                            emite($2, posId, crArgEntero(1), posId);
                         }
                 /* Function call */
                 | ID_ PAR_OPEN_ actualParameters PAR_CLOSE_ 
