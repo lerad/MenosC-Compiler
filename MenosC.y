@@ -67,6 +67,7 @@ extern int dvar;
     int incrementOperator;
     int multiplicativeOperator;
     int additiveOperator;
+    int asignationOperator;
 }
 
 %error-verbose
@@ -110,6 +111,7 @@ extern int dvar;
 %type <incrementOperator> incrementOperator;
 %type <multiplicativeOperator> multiplicativeOperator;
 %type <additiveOperator> additiveOperator;
+%type <asignationOperator> asignationOperator;
 
 	%%
 	program :           
@@ -338,7 +340,29 @@ extern int dvar;
                         }
             | ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ asignationOperator expression 
                         {
-                            $$.pos = crArgPosicion(level,0); // TODO: implement
+                            SIMB s = obtenerSimbolo($1);
+                            TIPO_ARG posArray = crArgPosicion(s.nivel, s.desp);
+                            TIPO_ARG varTemp = crArgPosicion(level, creaVarTemp());
+                            switch($5) 
+                            {
+                                case ASIGN:
+                                    emite(EVA, posArray, $3.pos, $6.pos); 
+                                    emite(EASIG, $6.pos, crArgNulo(), varTemp);
+                                    break;
+                                case ADD_ASIGN:
+                                    emite(EAV, posArray, $3.pos, varTemp);
+                                    emite(ESUM, varTemp, $6.pos, varTemp);
+                                    emite(EVA, posArray, $3.pos, varTemp); 
+                                    break;
+                                case MINUS_ASIGN:
+                                    emite(EAV, posArray, $3.pos, varTemp);
+                                    emite(EDIF, varTemp, $6.pos, varTemp);
+                                    emite(EVA, posArray, $3.pos, varTemp); 
+                                    break;
+                            }
+                            $$.pos = varTemp;
+                            $$.tipo = T_ENTERO;
+                            
                         }
 
             | ID_ POINT_ ID_ asignationOperator expression 
@@ -416,7 +440,11 @@ extern int dvar;
                 /* Array access */
                  ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ 
                         {
-                            $$.pos = crArgPosicion(level,0); // TODO: implement
+                            SIMB s = obtenerSimbolo($1);
+                            TIPO_ARG posArray = crArgPosicion(s.nivel, s.desp);
+                            $$.pos = crArgPosicion(level,creaVarTemp()); 
+                            $$.tipo = T_ENTERO;
+                            emite(EAV, posArray, $3.pos, $$.pos);
                         }
                 /* Record access */
                 | ID_ POINT_ ID_ 
@@ -458,7 +486,18 @@ extern int dvar;
                 };
 	actualParameters : /* eps */ | actualParameterList
 	actualParameterList : expression | expression COMMA actualParameterList 
-	asignationOperator : ASIGN | ADD_ASIGN | MINUS_ASIGN ;
+	asignationOperator : ASIGN 
+                                {
+                                    $$ = ASIGN;
+                                } 
+                        | ADD_ASIGN 
+                                {
+                                    $$ = ADD_ASIGN;
+                                }
+                        | MINUS_ASIGN 
+                                {
+                                    $$ = MINUS_ASIGN;
+                                };
     equalityOperator : EQUAL | NOT_EQUAL;
     relationalOperator : GREATER | LESS | GREATER_EQUAL | LESS_EQUAL ;
     additiveOperator : PLUS     
