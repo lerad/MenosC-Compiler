@@ -246,15 +246,15 @@ extern int dvar;
                            *       Btw. how do you translate dominio to english? I would think about domain, but I don't see the connection to function calls?
                            * ANSWER: Yes, we have to use this (insertaInfoDominio)
                            */
-                          insertaSimbolo($2, PARAMETRO , $1.type, 0, level, $1.ref); 
+                          $$.desp =  - $1.size - 2;  
+                          insertaSimbolo($2, PARAMETRO , $1.type, $$.desp, level, $1.ref); 
                           $$.parameterRef = insertaInfoDominio(-1, $1.type);
-                          $$.desp = $1.size;  
                         }
                     | type ID_ COMMA formalParameterList 
                         {
-                          insertaSimbolo($2, PARAMETRO, $1.type, $4.desp, level, $1.ref);
+                          $$.desp = $4.desp - $1.size;
+                          insertaSimbolo($2, PARAMETRO, $1.type, $$.desp, level, $1.ref);
                           $$.parameterRef = insertaInfoDominio($4.parameterRef, $1.type);
-                          $$.desp = $4.desp + $1.size;
                         };
 	block : CURLY_OPEN_ localVariableDeclaration 
                         { 
