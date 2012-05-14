@@ -17,6 +17,9 @@ int level = 0;
 int globalDesp = 0; // Desplacement of global variables
 int parameterSize = 0; // TODO: is there any better way to do this??
 
+int globalVariableReservationRef = 0;
+int mainCallRef = 0;
+
 const int INTEGER_SIZE = 1;
 
 extern int si; // Position of the next instruction
@@ -126,7 +129,11 @@ extern int dvar; // Position of the next temporary variable
                             level = 0; 
                             cargaContexto(level); 
                             DebugEnterLevel(); 
+                            // Reserve space for global variables
+                            globalVariableReservationRef = creaLans(si);
+                            emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(0));
                             // Call main:
+                            mainCallRef = creaLans(si);
                             emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(0));
                             emite(FIN, crArgNulo(), crArgNulo(), crArgNulo());
                         }  
@@ -145,10 +152,8 @@ extern int dvar; // Position of the next temporary variable
                             if(main.categoria != FUNCION) {
                                yyerror("Function main does not exist!\n"); 
                             }
-                            int siOld = si;
-                            si = 0;
-                            emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(main.desp));
-                            si = siOld;
+                            completaLans(mainCallRef, crArgEtiqueta(main.desp));
+                            completaLans(globalVariableReservationRef, crArgEntero(globalDesp));
                             descargaContexto(level); 
                             DebugEndLevel(); 
                         } ;
@@ -392,7 +397,7 @@ extern int dvar; // Position of the next temporary variable
                                 yyerror("Variable declaration failed");
                             }
                             else {
-                                emite(EASIG, $3.pos, crArgNulo(), crArgPosicion(level, id.desp)); 
+                                emite(EASIG, $3.pos, crArgNulo(), crArgPosicion(id.nivel, id.desp)); 
                                 $$.pos = crArgPosicion(level, id.desp);
                             }
                         }
