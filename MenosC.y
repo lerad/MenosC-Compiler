@@ -71,6 +71,8 @@ extern int dvar;
     int additiveOperator;
     int asignationOperator;
     int hasRef;
+    int relationalOperator;
+    int equalityOperator;
 }
 
 %error-verbose
@@ -115,6 +117,8 @@ extern int dvar;
 %type <multiplicativeOperator> multiplicativeOperator;
 %type <additiveOperator> additiveOperator;
 %type <asignationOperator> asignationOperator;
+%type <relationalOperator> relationalOperator;
+%type <equalityOperator> equalityOperator;
 	%%
 	program :           
                         {
@@ -407,7 +411,20 @@ extern int dvar;
                             $$.pos = $1.pos;
                             $$.tipo = $1.tipo;
                         }
-                | equalityExpression equalityOperator relationalExpression ;
+                | equalityExpression equalityOperator relationalExpression 
+
+                        {
+                            $$.pos = crArgPosicion(level, creaVarTemp());
+                            int ref1 = creaLans(si);
+                            emite($2, $1.pos, $3.pos, crArgEtiqueta(0)); // Conditional jump depending on the relation
+                            emite(EASIG, crArgEntero(0), crArgNulo(), $$.pos); // Assign 0, because the relation does not hold
+                            int ref2 = creaLans(si);
+                            emite(GOTOS, crArgNulo(), crArgNulo(), crArgEtiqueta(0)); // Jump to the end
+                            completaLans(ref1, crArgEtiqueta(si)); // Jump here if the relation holds
+                            emite(EASIG, crArgEntero(1), crArgNulo(), $$.pos); 
+                            completaLans(ref2, crArgEtiqueta(si)); 
+                            $$.tipo = T_LOGICO; 
+                        };
 	relationalExpression : additiveExpression 
                         {
                             /*$$.pos = crArgPosicion(level, creaVarTemp());
@@ -419,7 +436,16 @@ extern int dvar;
                         }
                 | relationalExpression relationalOperator additiveExpression 
                         {
-                            // TODO: implement
+                            $$.pos = crArgPosicion(level, creaVarTemp());
+                            int ref1 = creaLans(si);
+                            emite($2, $1.pos, $3.pos, crArgEtiqueta(0)); // Conditional jump depending on the relation
+                            emite(EASIG, crArgEntero(0), crArgNulo(), $$.pos); // Assign 0, because the relation does not hold
+                            int ref2 = creaLans(si);
+                            emite(GOTOS, crArgNulo(), crArgNulo(), crArgEtiqueta(0)); // Jump to the end
+                            completaLans(ref1, crArgEtiqueta(si)); // Jump here if the relation holds
+                            emite(EASIG, crArgEntero(1), crArgNulo(), $$.pos); 
+                            completaLans(ref2, crArgEtiqueta(si)); 
+                            $$.tipo = T_LOGICO; 
                         };
 	additiveExpression : multiplicativeExpression 
                         {
@@ -550,8 +576,31 @@ extern int dvar;
                                 {
                                     $$ = MINUS_ASIGN;
                                 };
-    equalityOperator : EQUAL | NOT_EQUAL;
-    relationalOperator : GREATER | LESS | GREATER_EQUAL | LESS_EQUAL ;
+    equalityOperator : EQUAL 
+                        {
+                            $$ = EIGUAL;
+                        }
+                        | NOT_EQUAL 
+                        {
+                            $$ = EDIST;
+                        };
+    relationalOperator : GREATER 
+                        {
+                            $$ = EMAY;
+                        }
+                        | LESS 
+                        {
+                            $$ = EMEN;
+                        }
+                        | GREATER_EQUAL 
+                        {
+                            $$ = EMAYEQ;
+                        }
+                        | LESS_EQUAL 
+                        {
+                            $$ = EMENEQ;
+                        }
+                        ;
     additiveOperator : PLUS     
                         {
                             $$ = ESUM;
