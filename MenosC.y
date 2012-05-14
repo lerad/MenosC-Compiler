@@ -133,10 +133,14 @@ extern int dvar; // Position of the next temporary variable
                 declarationList 
                         {
                             DebugStream("Show TDS after end of the program. Level: " << level);
+                            #ifdef DEBUG
                             mostrarTDS(level); 
+                            #endif 
 
                             DebugStream("Let us see the TDS after the program:" );                            
+                            #ifdef DEBUG
                             mostrarTDS(level);
+                            #endif
                             SIMB main = obtenerSimbolo("main");
                             if(main.categoria != FUNCION) {
                                yyerror("Function main does not exist!\n"); 
@@ -160,7 +164,9 @@ extern int dvar; // Position of the next temporary variable
                             // But where do we save the address of the function? Or is this only important later in the assembler phase?
                             insertaSimbolo($1.name, FUNCION, $1.returnType, $1.desp, level, $1.parameterRef);  
                             DebugStream("Show TDS after declaration of '" << $1.name << "' in level " << level);
+                            #ifdef DEBUG
                             mostrarTDS(level);
+                            #endif
                         };
 	variableDeclaration : type ID_ SEMICOLON_ 
 				        {
@@ -210,7 +216,9 @@ extern int dvar; // Position of the next temporary variable
                             $$.name = $1.name; 
                             $$.parameterRef = $1.parameterRef; 
                             DebugStream("Show TDS before returning from the declaration of "<< $1.name << " in level " << level);
+                            #ifdef DEBUG
                             mostrarTDS(level); 
+                            #endif
 
                             emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
 

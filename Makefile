@@ -1,8 +1,9 @@
 program=MenosC
 testdir=test/
 CC = g++    
-CFLAGS = -lfl -ltds -lgci -DDEBUG -Wno-write-strings
+CFLAGS = -lfl -ltds -lgci -Wno-write-strings
 
+# For debug activate -DDEBUG in CFLAGS
 
 all: DebugMsg.cpp bison flex	
 	$(CC) DebugMsg.cpp MenosC.c lex.yy.c MenosC.tab.c  -L./lib -I./include $(CFLAGS) -o $(program) 
