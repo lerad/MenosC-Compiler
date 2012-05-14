@@ -70,6 +70,7 @@ extern int dvar;
     int multiplicativeOperator;
     int additiveOperator;
     int asignationOperator;
+    int hasRef;
 }
 
 %error-verbose
@@ -114,7 +115,6 @@ extern int dvar;
 %type <multiplicativeOperator> multiplicativeOperator;
 %type <additiveOperator> additiveOperator;
 %type <asignationOperator> asignationOperator;
-
 	%%
 	program :           
                         {
@@ -319,7 +319,26 @@ extern int dvar;
                         {
                             emite(EWRITE, crArgNulo(), crArgNulo(), $3.pos);
                         };
-	selectionInstruction : IF PAR_OPEN_ expression PAR_CLOSE_  instruction ELSE instruction ;
+	selectionInstruction : IF PAR_OPEN_ expression PAR_CLOSE_  
+                        { 
+                            int ref = creaLans(si);
+                            $<hasRef>$ = ref;
+                            emite(EIGUAL, $3.pos, crArgEntero(0), crArgEtiqueta(0));
+                        } 
+                        instruction 
+                        {
+                            int ref = creaLans(si);
+                            $<hasRef>$ = ref;
+                            emite(GOTOS,  crArgNulo(), crArgNulo(), crArgEtiqueta(0));
+                            completaLans($<hasRef>5, crArgEtiqueta(si));
+                        }
+                        ELSE instruction
+                        {
+                            completaLans($<hasRef>7, crArgEtiqueta(si));
+                        } ;
+
+
+                        
 	iterationInstruction : FOR PAR_OPEN_ optionalExpression SEMICOLON_ expression SEMICOLON_ optionalExpression PAR_CLOSE_  instruction;
 	optionalExpression : /* eps */
                         {
