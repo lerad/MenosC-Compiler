@@ -332,20 +332,32 @@ std::vector<std::list<int> > localPlaceUpdateList;
                     CURLY_OPEN_
                         {
                             // TODO: save dvar and later remove it.
+                            $<block>$.oldDvar = dvar;
                             level++; 
                             cargaContexto(level); 
+                            localPlaceUpdateList.push_back( std::list<int>() );
                             DebugEnterLevel(); 
+                            int ref = creaLans(si);
+                            emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(0));
+                            localPlaceUpdateList.back().push_back(ref);
                         } 
-                    localVariableDeclaration 
+                    localVariableDeclaration instructionList CURLY_CLOSE_ 
                         {
-                    // INCTOP 
-                        }
-                    instructionList CURLY_CLOSE_ 
-                        {
-                    // DECTOP
                             // TODO: We have to save place on the stack too!
+                            int spaceReservedThisLevel = dvar - $<block>2.oldDvar;
+                            emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(spaceReservedThisLevel));
+
+                            /* Update all localPlaceUpdateList entries of this level */
+                            const std::list<int> &currList = localPlaceUpdateList.back();
+                            std::list<int>::const_iterator it;
+                            
+                            for(it = currList.begin(); it != currList.end(); it++) {
+                                 completaLans(*it, crArgEntero(spaceReservedThisLevel));
+                            }
+
                             descargaContexto(level); 
                             DebugEndLevel(); level--; 
+                            localPlaceUpdateList.pop_back();
                         } 
             | expressionInstruction | ioInstruction | selectionInstruction | iterationInstruction | returnInstruction;
 	expressionInstruction : SEMICOLON_ | expression SEMICOLON_;
