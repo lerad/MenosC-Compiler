@@ -51,7 +51,7 @@ std::vector<std::list<int> > localPlaceUpdateList;
         int desp;
         int parameterRef; 
         char *name;
-    } functionDeclaration, functionHead;
+    } functionHead;
     struct {
         int desp;
         int parameterRef; // "Dominio"
@@ -71,9 +71,8 @@ std::vector<std::list<int> > localPlaceUpdateList;
         int tipo; //TODO : Use type
     } expression;
     struct {
-        int siStackIncrement;
         int oldDvar;
-    } block;
+    } block; // TODO: Rename as currently this is not used for the block-element. (Although it has a close connection)
     int incrementOperator;
     int multiplicativeOperator;
     int additiveOperator;
@@ -107,7 +106,6 @@ std::vector<std::list<int> > localPlaceUpdateList;
 
 %type <type> type;
 %type <variableDeclaration> variableDeclaration;
-%type <functionDeclaration> functionDeclaration;
 %type <functionHead> functionHead;
 %type <formalParameters> formalParameters;
 %type <formalParameterList> formalParameterList;
@@ -167,16 +165,7 @@ std::vector<std::list<int> > localPlaceUpdateList;
                             declareVariable(level, $1.name, $1.type, globalDesp,  $1.size, $1.ref); 
                             globalDesp += $1.size;
                         }
-                | functionDeclaration 
-                        {
-                            // TODO: Do we need DESP here? Functions don't need 'place' in this sense. 
-                            // But where do we save the address of the function? Or is this only important later in the assembler phase?
-                            insertaSimbolo($1.name, FUNCION, $1.returnType, $1.desp, level, $1.parameterRef);  
-                            DebugStream("Show TDS after declaration of '" << $1.name << "' in level " << level);
-                            #ifdef DEBUG
-                            mostrarTDS(level);
-                            #endif
-                        };
+                | functionDeclaration ;
 	variableDeclaration : type ID_ SEMICOLON_ 
 				        {
                             $$.type = $1.type; 
@@ -217,13 +206,14 @@ std::vector<std::list<int> > localPlaceUpdateList;
                             $$.desp = $1.desp + $2.size;
                             $$.fieldsRef = result; /* Is this identical to $1.fieldsRef?*/
                         };
-	functionDeclaration : functionHead block  
+	functionDeclaration : functionHead 
                         {
-                            $$.desp = $1.desp;
-                            $$.returnType = $1.returnType; 
-                            $$.returnTypeRef = $1.returnTypeRef;
-                            $$.name = $1.name; 
-                            $$.parameterRef = $1.parameterRef; 
+                            // We have to insert the function already here into the table of symbols.
+                            // Otherwise we couldn't use it inside the block and recursion wouldn't work.
+                            insertaSimbolo($1.name, FUNCION, $1.returnType, $1.desp, level, $1.parameterRef);  
+                        }        
+                    block  
+                        {
                             DebugStream("Show TDS before returning from the declaration of "<< $1.name << " in level " << level);
                             #ifdef DEBUG
                             mostrarTDS(level); 
@@ -259,54 +249,47 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         }
                     | formalParameterList 
                         {   
-                            parameterSize = $$.desp;
                             $$.desp = $1.desp; 
                             $$.parameterRef = $1.parameterRef;
                         };
 	formalParameterList : type ID_ 
                         { 
-                          /*
-                           * TODO: Actually we are here saving the parameter as parameter into the symbol table
-                           *       but: This is lost when we leave the scope of the function. So if we later call the function
-                           *       how can we retrieve the parameters to check them if they fit to the call (statical type checking)
-                           *       I think for this we have to use the function insertaInfoDominio but there is no way to check if for example
-                           *       the structs fit, as only the data that it is a struct is saved.
-                           *       Btw. how do you translate dominio to english? I would think about domain, but I don't see the connection to function calls?
-                           * ANSWER: Yes, we have to use this (insertaInfoDominio)
-                           */
-                          $$.desp =  - $1.size - 2;  
+                          parameterSize += $1.size;
+                          $$.desp =  - $1.size - 2;  /* -2 = without stackpointer and saved framepointer */ 
                           insertaSimbolo($2, PARAMETRO , $1.type, $$.desp, level, $1.ref); 
                           $$.parameterRef = insertaInfoDominio(-1, $1.type);
                         }
                     | type ID_ COMMA formalParameterList 
                         {
+                          parameterSize += $1.size;
                           $$.desp = $4.desp - $1.size;
                           insertaSimbolo($2, PARAMETRO, $1.type, $$.desp, level, $1.ref);
                           $$.parameterRef = insertaInfoDominio($4.parameterRef, $1.type);
                         };
-	block : CURLY_OPEN_ localVariableDeclaration 
+	block : CURLY_OPEN_ 
+                        {
+                            $<block>$.oldDvar = dvar;
+                            dvar = 0;
+                        }
+                        localVariableDeclaration 
                         { 
-                            // We add a dummy increment here, which we later overwrite
-                            // TODO: Use creaLans here
                             emite(PUSHFP, crArgNulo(), crArgNulo(), crArgNulo());
                             emite(FPTOP, crArgNulo(), crArgNulo(), crArgNulo());
-                            $<block>$.oldDvar = dvar;
                             
                             DebugStream("Save dvar = " << dvar << " for level " << level);
                             int ref = creaLans(si);
                             localPlaceUpdateList.back().push_back(ref);
                             emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(0)); 
-                            dvar = $2.desp; 
 
                         }
                         instructionList 
                         { 
-                            int spaceReservedThisLevel = dvar - $<block>3.oldDvar; 
+                            int spaceReservedThisLevel = dvar;
 
                             // Remove the place for local variables
                             emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(spaceReservedThisLevel));
                             emite(FPPOP, crArgNulo(), crArgNulo(), crArgNulo());
-                            dvar = $<block>3.oldDvar;
+                            dvar = $<block>2.oldDvar;
 
                             /* Update all localPlaceUpdateList entries of this level */
                             const std::list<int> &currList = localPlaceUpdateList.back();
@@ -320,18 +303,22 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         CURLY_CLOSE_ ;  ; 
 	localVariableDeclaration : /* eps */ 
                         {
-                            $$.desp = 0;
+                            /*
+                             * We have to start at dvar and not at 0. This is because if we have the localVariableDeclaration inside 
+                             * of an instruction we have to continue at the previous value of dvar.
+                             */
+                            $$.desp = dvar;
                         }
             | localVariableDeclaration variableDeclaration
                         {
                             declareVariable(level, $2.name, $2.type, $1.desp,  $2.size, $2.ref); 
                             $$.desp = $1.desp + $2.size;
+                            dvar  += $2.size;
                         };
 	instructionList : /* eps */  | instructionList instruction ;
 	instruction : 
                     CURLY_OPEN_
                         {
-                            // TODO: save dvar and later remove it.
                             $<block>$.oldDvar = dvar;
                             level++; 
                             cargaContexto(level); 
@@ -343,8 +330,8 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         } 
                     localVariableDeclaration instructionList CURLY_CLOSE_ 
                         {
-                            // TODO: We have to save place on the stack too!
                             int spaceReservedThisLevel = dvar - $<block>2.oldDvar;
+                            dvar = $<block>2.oldDvar;
                             emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(spaceReservedThisLevel));
 
                             /* Update all localPlaceUpdateList entries of this level */
@@ -372,7 +359,6 @@ std::vector<std::list<int> > localPlaceUpdateList;
                                 emite(EREAD, crArgNulo(), crArgNulo(), crArgPosicion(level, id.desp)); 
                             }
                             
-                            // TODO: implement read
                         }
             | PRINT_ PAR_OPEN_ expression PAR_CLOSE_ SEMICOLON_ 
                         {
@@ -405,8 +391,12 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         } | expression;
 	returnInstruction : RETURN expression SEMICOLON_ 
                         {
-                             // TODO: We should understand a little more of the stack and be prepared to explain why we use 1
-                             TIPO_ARG posReturn = crArgPosicion(level, parameterSize - 1);
+                             /*
+                              * Position of the return value:
+                              * Stackpointer -1 - 2 (Ret + Old FP) - parameterSize
+                              * The -1 is because the stackpointer points to the next element. So SP - 1 is the last element on the stack.
+                              */
+                             TIPO_ARG posReturn = crArgPosicion(level, -parameterSize - 3);
                              DebugStream("Posreturn: " << parameterSize - 1 );
                              emite(EASIG, $2.pos, crArgNulo(), posReturn);
                              // We return from the complete function.
