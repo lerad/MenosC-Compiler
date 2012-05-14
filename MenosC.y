@@ -319,6 +319,18 @@ extern int dvar;
             | expressionInstruction | ioInstruction | selectionInstruction | iterationInstruction | returnInstruction;
 	expressionInstruction : SEMICOLON_ | expression SEMICOLON_;
 	ioInstruction : READ_ PAR_OPEN_ ID_ PAR_CLOSE_ SEMICOLON_ 
+                        {
+                            SIMB id = obtenerSimbolo($3);
+                            if(id.categoria == NULO) {
+                                printf("The variable %s is not declared.", $3);
+                                yyerror("The variable is not declared.");
+                            }
+                            else {
+                                emite(EREAD, crArgNulo(), crArgNulo(), crArgPosicion(level, id.desp)); 
+                            }
+                            
+                            // TODO: implement read
+                        }
             | PRINT_ PAR_OPEN_ expression PAR_CLOSE_ SEMICOLON_ 
                         {
                             emite(EWRITE, crArgNulo(), crArgNulo(), $3.pos);
