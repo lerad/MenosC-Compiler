@@ -565,8 +565,12 @@ extern int dvar; // Position of the next temporary variable
                         }
                 | CTI_ {
                     $$.tipo = T_ENTERO;
-                    $$.pos = crArgPosicion(level, creaVarTemp()) ;
-                    emite(EASIG, crArgEntero($1), crArgNulo(), $$.pos);
+                    /* This is not a position, but we can use an integer everywhere where
+                     * we would use this temporary variable. So we can save one temporary variable.
+                     * This makes the code cleaner.
+                     */
+                    $$.pos = crArgEntero($1);
+
                 };
 	actualParameters : /* eps */ | actualParameterList
 	actualParameterList : expression 
