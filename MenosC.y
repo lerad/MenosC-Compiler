@@ -8,6 +8,7 @@
 #include <libtds.h>
 #include <string.h>
 #include <iostream>
+#include <list>
 #include <vector>
 
 int verbose = FALSE;
@@ -25,6 +26,9 @@ const int INTEGER_SIZE = 1;
 extern int si; // Position of the next instruction
 extern int dvar; // Position of the next temporary variable
 
+
+// Contains the update-refs for each level
+std::vector<std::list<int> > localPlaceUpdateList;
 
 %}
 %union {
@@ -225,16 +229,18 @@ extern int dvar; // Position of the next temporary variable
                             mostrarTDS(level); 
                             #endif
 
-                            emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
-
+                            localPlaceUpdateList.pop_back();
                             descargaContexto(level); 
                             DebugEndLevel();  
                             level--;
+
+                            emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
                         } ;
 	functionHead : type ID_ 
                         {   
                             level++; 
                             cargaContexto(level); 
+                            localPlaceUpdateList.push_back( std::list<int>() );
                             DebugEnterLevel(); 
                         } 
                     PAR_OPEN_  formalParameters PAR_CLOSE_  
@@ -281,30 +287,35 @@ extern int dvar; // Position of the next temporary variable
 	block : CURLY_OPEN_ localVariableDeclaration 
                         { 
                             // We add a dummy increment here, which we later overwrite
+                            // TODO: Use creaLans here
                             emite(PUSHFP, crArgNulo(), crArgNulo(), crArgNulo());
                             emite(FPTOP, crArgNulo(), crArgNulo(), crArgNulo());
                             $<block>$.oldDvar = dvar;
-                            $<block>$.siStackIncrement = si;
-                            DebugStream("Save si = " << si << " for level " << level);
+                            
                             DebugStream("Save dvar = " << dvar << " for level " << level);
+                            int ref = creaLans(si);
+                            localPlaceUpdateList.back().push_back(ref);
                             emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(0)); 
                             dvar = $2.desp; 
 
                         }
                         instructionList 
                         { 
-                            // Overwrite the increment at the begin of the block
-                            int oldsi = si;
-                            si = $<block>3.siStackIncrement;
-                            DebugStream("Load si = " << $<block>3.siStackIncrement << " for level " << level);
-                            DebugStream("Load dvar = " << $<block>3.oldDvar << " for level " << level);
-                            emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(dvar));
-                            si = oldsi;
+                            int spaceReservedThisLevel = dvar - $<block>3.oldDvar; 
 
                             // Remove the place for local variables
-                            emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(dvar));
+                            emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(spaceReservedThisLevel));
                             emite(FPPOP, crArgNulo(), crArgNulo(), crArgNulo());
                             dvar = $<block>3.oldDvar;
+
+                            /* Update all localPlaceUpdateList entries of this level */
+                            const std::list<int> &currList = localPlaceUpdateList.back();
+                            std::list<int>::const_iterator it;
+                            
+                            for(it = currList.begin(); it != currList.end(); it++) {
+                                 completaLans(*it, crArgEntero(spaceReservedThisLevel));
+                            }
+
                         }
                         CURLY_CLOSE_ ;  ; 
 	localVariableDeclaration : /* eps */ 
@@ -318,14 +329,20 @@ extern int dvar; // Position of the next temporary variable
                         };
 	instructionList : /* eps */  | instructionList instruction ;
 	instruction : 
+                    CURLY_OPEN_
                         {
                             // TODO: save dvar and later remove it.
                             level++; 
                             cargaContexto(level); 
                             DebugEnterLevel(); 
                         } 
-            CURLY_OPEN_ localVariableDeclaration instructionList CURLY_CLOSE_ 
+                    localVariableDeclaration 
                         {
+                    // INCTOP 
+                        }
+                    instructionList CURLY_CLOSE_ 
+                        {
+                    // DECTOP
                             // TODO: We have to save place on the stack too!
                             descargaContexto(level); 
                             DebugEndLevel(); level--; 
@@ -380,7 +397,14 @@ extern int dvar; // Position of the next temporary variable
                              TIPO_ARG posReturn = crArgPosicion(level, parameterSize - 1);
                              DebugStream("Posreturn: " << parameterSize - 1 );
                              emite(EASIG, $2.pos, crArgNulo(), posReturn);
-                             emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(dvar));
+                             // We return from the complete function.
+                             // This means we have to remove the place from each level:
+                             for(int i=0; i<localPlaceUpdateList.size(); i++) {
+                                int ref = creaLans(si);
+                                emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(0));
+                                localPlaceUpdateList[i].push_back(ref);
+                             }
+
                              emite(FPPOP, crArgNulo(), crArgNulo(), crArgNulo());
                              
                              emite(RET, crArgNulo(), crArgNulo(), crArgNulo());
