@@ -19,8 +19,9 @@ int parameterSize = 0; // TODO: is there any better way to do this??
 
 const int INTEGER_SIZE = 1;
 
-extern int si;
-extern int dvar;
+extern int si; // Position of the next instruction
+extern int dvar; // Position of the next temporary variable
+
 
 %}
 %union {
@@ -274,7 +275,7 @@ extern int dvar;
                             DebugStream("Save si = " << si << " for level " << level);
                             DebugStream("Save dvar = " << dvar << " for level " << level);
                             emite(INCTOP, crArgNulo(), crArgNulo(), crArgEntero(0)); 
-                            dvar = $2.desp + 1;
+                            dvar = $2.desp; 
 
                         }
                         instructionList 
