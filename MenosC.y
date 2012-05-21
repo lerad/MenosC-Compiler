@@ -490,7 +490,12 @@ std::vector<std::list<int> > localPlaceUpdateList;
 
             | ID_ POINT_ ID_ asignationOperator expression 
                         {
-                            $$.pos = crArgPosicion(level,0); // TODO: implement
+                            SIMB simStruct = obtenerSimbolo($1);
+                            REG campo = obtenerInfoCampo(simStruct.ref, $3);
+                            int despTotal = simStruct.desp + campo.desp;
+                            $$.tipo = campo.tipo;
+                            $$.pos = crArgPosicion(simStruct.nivel,despTotal); 
+                            emite(EASIG, $5.pos, crArgNulo(), $$.pos);
                         };
 	equalityExpression : relationalExpression 
                         {
@@ -594,7 +599,11 @@ std::vector<std::list<int> > localPlaceUpdateList;
                 /* Record access */
                 | ID_ POINT_ ID_ 
                         {
-                            $$.pos = crArgPosicion(level,0); // TODO: implement
+                            SIMB simStruct = obtenerSimbolo($1);
+                            REG campo = obtenerInfoCampo(simStruct.ref, $3);
+                            int despTotal = simStruct.desp + campo.desp;
+                            $$.tipo = campo.tipo;
+                            $$.pos = crArgPosicion(simStruct.nivel,despTotal); // TODO: implement
                         }
                 /* Increment/Decrement */
                 | ID_ incrementOperator 
