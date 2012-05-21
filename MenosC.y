@@ -73,6 +73,10 @@ std::vector<std::list<int> > localPlaceUpdateList;
     struct {
         int oldDvar;
     } block; // TODO: Rename as currently this is not used for the block-element. (Although it has a close connection)
+    struct {
+        int label;
+        int ref;
+    } forHelper;
     int incrementOperator;
     int multiplicativeOperator;
     int additiveOperator;
@@ -384,7 +388,37 @@ std::vector<std::list<int> > localPlaceUpdateList;
 
 
                         
-	iterationInstruction : FOR PAR_OPEN_ optionalExpression SEMICOLON_ expression SEMICOLON_ optionalExpression PAR_CLOSE_  instruction;
+	iterationInstruction : FOR PAR_OPEN_ optionalExpression SEMICOLON_ 
+                        {
+                            // Start:
+                            $<forHelper>$.label = si;
+                        }
+                        expression 
+                        {
+                            $<forHelper>$.ref = creaLans(si);
+                            emite(EIGUAL, $6.pos, crArgEntero(0), crArgEtiqueta(0)); // Check if loop condition false, then jump to final
+                        }
+                        SEMICOLON_ 
+                        {
+                            $<forHelper>$.ref = creaLans(si);
+                            // Goto body
+                            emite(GOTOS, crArgNulo(), crArgNulo(), crArgEtiqueta(0)); 
+                            // OptExpression:
+                            $<forHelper>$.label = si;
+                        }
+                        optionalExpression PAR_CLOSE_  
+                        {   // Goto start
+                            emite(GOTOS, crArgNulo(), crArgNulo(), crArgEtiqueta($<forHelper>5.label));
+                            // body:
+                            completaLans($<forHelper>9.ref, crArgEtiqueta(si));
+                        }
+                        instruction 
+                        {
+                            // goto optExpression
+                            emite(GOTOS, crArgNulo(), crArgNulo(), crArgEtiqueta($<forHelper>9.label));
+                            // Final:
+                            completaLans($<forHelper>7.ref, crArgEtiqueta(si));
+                        };
 	optionalExpression : /* eps */
                         {
                             $$.tipo = T_VACIO;
