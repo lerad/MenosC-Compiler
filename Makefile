@@ -23,6 +23,6 @@ clean:
 	rm -f *.o
 	rm -f $(program)
 test: all
-	python $(testdir)shouldcompile.py $(program)  $(testdir)
+	python $(testdir)shouldcompile.py $(program)  $(testdir)/ExamplesPoliformat
 
   

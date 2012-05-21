@@ -577,7 +577,7 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         {
                             // Do we have to make the program failsave 
                             // Example: ID_ = struct
-                            SIMB sim; 
+                            SIMB sim = obtenerSimbolo($2); 
                             TIPO_ARG res;
                             $$.tipo = T_ENTERO;
                             res = crArgPosicion(sim.nivel, sim.desp);
