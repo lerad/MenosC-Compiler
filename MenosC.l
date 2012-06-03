@@ -66,7 +66,7 @@ LETTER      [a-zA-Z_]
 
 . { 
   char buffer[200];
-  sprintf(buffer, "Error: Unknown character '%s' at line %i\n", yytext, yylineno);
+  sprintf(buffer, "Unknown character '%s'\n", yytext, yylineno);
   yyerror(buffer);
 }
 

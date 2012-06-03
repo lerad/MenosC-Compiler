@@ -783,5 +783,5 @@ SIMB getSymbol(char *name) {
 void yyerror(char *s) 
 {
   //printf("Line %d: %s\n", yylineno, s);
-  std::cerr << "Line " << yylineno << ": " << s << std::endl;
+  std::cerr << "Error: Line " << yylineno << ": " << s << std::endl;
 }
