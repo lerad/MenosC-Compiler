@@ -1,7 +1,7 @@
-program=MenosC
+program=cmc
 testdir=test/
 CC = g++    
-CFLAGS = -lfl -ltds -lgci -Wno-write-strings
+CFLAGS = -lfl -ltds -lgci -Wno-write-strings 
 
 # For debug activate -DDEBUG in CFLAGS
 
