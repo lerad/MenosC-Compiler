@@ -1,0 +1,31 @@
+a00.c:
+Expected: In C we would expect a total random result, here it is probably 0
+Our Compiler: 0
+Note: correct
+
+a01.c:
+Expected: The numbers from 9 to 0 in decreasing order
+Our Compiler: 9 .. 0
+Note: correct
+
+a02.c:
+Expected: 2 1 0 3 0 1 0 0 (With newlines)
+Our Compiler: 2 1 0 3 0 1 0 0 
+Note: correct
+
+
+a03.c:
+Expected: 
+ 29 int C(int x, int x)
+ 30 {
+ 31   return A(B(x,y),B(x,y));
+ 32 }
+should throw an error
+          
+Our Compiler: Gives error messages, although not on the double definition
+
+a04.c:
+Expected: Error because, there is no main function
+Our Compiler: Line 1: Function main does not exist!
+Note: The Line nr does not make sense, especially as it happens after the parsing. 
+
