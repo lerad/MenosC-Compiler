@@ -38,8 +38,9 @@ std::vector<std::list<int> > localPlaceUpdateList;
 TIPO_ARG getSymbolPosition(char *name) {
     SIMB id = obtenerSimbolo(name);
     if(id.categoria == NULO) {
-        printf("The variable %s is not declared.", name);
-        yyerror("The variable is not declared.");
+        char buffer[200];
+        sprintf(buffer, "The variable %s is not declared.", name);
+        yyerror(buffer);
         return crArgPosicion(0,0);
     }
 
@@ -105,7 +106,8 @@ SIMB getSymbol(char *name) {
     } localVariableDeclaration;
     struct {
         TIPO_ARG pos;
-        int tipo; //TODO : Use type
+        int type; 
+        int size;
     } expression;
     struct {
         int oldDvar;
@@ -114,6 +116,9 @@ SIMB getSymbol(char *name) {
         int label;
         int ref;
     } forHelper;
+    struct {
+        int ref;
+    } actualParameters, actualParameterList;
     int incrementOperator;
     int multiplicativeOperator;
     int additiveOperator;
@@ -166,6 +171,9 @@ SIMB getSymbol(char *name) {
 %type <asignationOperator> asignationOperator;
 %type <relationalOperator> relationalOperator;
 %type <equalityOperator> equalityOperator;
+%type <actualParameters> actualParameters;
+%type <actualParameterList> actualParameterList;
+
 	%%
 	program :           
                         {
@@ -216,6 +224,11 @@ SIMB getSymbol(char *name) {
                         } 
 			    |  type  ID_  SQUARE_OPEN_ CTI_ SQUARE_CLOSE_  SEMICOLON_  
 				        { 
+                            if($4 == 0) {
+                                char buffer[200];
+                                sprintf(buffer, "Array %s is declared with a length of 0", $2);
+                                yyerror(buffer);
+                            }
                             $$.type = T_ARRAY; 
 				            $$.name = $2; 
 				            $$.size = $1.size * $4; 
@@ -456,7 +469,7 @@ SIMB getSymbol(char *name) {
                         };
 	optionalExpression : /* eps */
                         {
-                            $$.tipo = T_VACIO;
+                            $$.type = T_VACIO;
                         } | expression;
 	returnInstruction : RETURN expression SEMICOLON_ 
                         {
@@ -484,6 +497,7 @@ SIMB getSymbol(char *name) {
 	expression : equalityExpression 
                         {
                             $$.pos = $1.pos;
+                            $$.size = $1.size;
                         }
             | ID_ asignationOperator expression 
                         {
@@ -500,6 +514,8 @@ SIMB getSymbol(char *name) {
                                     break;
                             }
                             $$.pos = posId;
+                            $$.type = T_ENTERO;
+                            $$.size = 1; 
                         }
             | ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ asignationOperator expression 
                         {
@@ -523,7 +539,8 @@ SIMB getSymbol(char *name) {
                                     break;
                             }
                             $$.pos = varTemp;
-                            $$.tipo = T_ENTERO;
+                            $$.type = T_ENTERO;
+                            $$.size = 1;
                             
                         }
 
@@ -532,9 +549,10 @@ SIMB getSymbol(char *name) {
                             SIMB simStruct = getSymbol($1);
                             REG campo = obtenerInfoCampo(simStruct.ref, $3);
                             int despTotal = simStruct.desp + campo.desp;
-                            $$.tipo = campo.tipo;
                             TIPO_ARG posField = crArgPosicion(simStruct.nivel,despTotal); 
                             $$.pos = posField;
+                            $$.type = campo.tipo;
+                            $$.size = 1; // Fields don't have sizes in the TDS
                             switch($4) {
                                 case ASIGN:
                                     emite(EASIG, $5.pos, crArgNulo(), posField);
@@ -550,7 +568,8 @@ SIMB getSymbol(char *name) {
 	equalityExpression : relationalExpression 
                         {
                             $$.pos = $1.pos;
-                            $$.tipo = $1.tipo;
+                            $$.type = $1.type;
+                            $$.size = $1.size;
                         }
                 | equalityExpression equalityOperator relationalExpression 
 
@@ -564,15 +583,17 @@ SIMB getSymbol(char *name) {
                             completaLans(ref1, crArgEtiqueta(si)); // Jump here if the relation holds
                             emite(EASIG, crArgEntero(1), crArgNulo(), $$.pos); 
                             completaLans(ref2, crArgEtiqueta(si)); 
-                            $$.tipo = T_LOGICO; 
+                            $$.type = T_LOGICO; 
+                            $$.size = 1;
                         };
 	relationalExpression : additiveExpression 
                         {
                             /*$$.pos = crArgPosicion(level, creaVarTemp());
-                            $$.tipo = T_LOGICO;
+                            $$.type = T_LOGICO;
                             emite(ETOB, $$.pos, crArgNulo(), $$.pos);*/
                             $$.pos = $1.pos;
-                            $$.tipo = $1.tipo;
+                            $$.type = $1.type;
+                            $$.size = $1.size;
                             
                         }
                 | relationalExpression relationalOperator additiveExpression 
@@ -586,50 +607,56 @@ SIMB getSymbol(char *name) {
                             completaLans(ref1, crArgEtiqueta(si)); // Jump here if the relation holds
                             emite(EASIG, crArgEntero(1), crArgNulo(), $$.pos); 
                             completaLans(ref2, crArgEtiqueta(si)); 
-                            $$.tipo = T_LOGICO; 
+                            $$.type = T_LOGICO; 
+                            $$.size = 1;
                         };
 	additiveExpression : multiplicativeExpression 
                         {
                             $$.pos = $1.pos;
-                            $$.tipo = $1.tipo;
+                            $$.type = $1.type;
+                            $$.size = $1.size;
                         }
                 | additiveExpression additiveOperator multiplicativeExpression 
                         {
                             $$.pos = crArgPosicion(level, creaVarTemp());
-                            $$.tipo = T_ENTERO;
+                            $$.type = T_ENTERO;
+                            $$.size = 1;
                             emite($2, $1.pos, $3.pos, $$.pos);
                         };
 	multiplicativeExpression : unaryExpression 
                         {
                             $$.pos = $1.pos;
-                            $$.tipo = $1.tipo;
+                            $$.type = $1.type;
+                            $$.size = $1.size;
                         }
 
                 | multiplicativeExpression multiplicativeOperator unaryExpression 
                         {
                             $$.pos = crArgPosicion(level, creaVarTemp());
-                            $$.tipo = T_ENTERO;
+                            $$.type = T_ENTERO;
+                            $$.size = 1;
                             emite($2, $1.pos, $3.pos, $$.pos);
                         };
 	unaryExpression : suffixExpression 
                         {
-                            $$.tipo = $1.tipo;
+                            $$.type = $1.type;
                             $$.pos = $1.pos;
+                            $$.size = $1.size;
                         }
                 | unaryOperator unaryExpression 
                         {   
                             TIPO_ARG res = crArgPosicion(level, creaVarTemp());
                             emite(ESIG, $2.pos, crArgNulo(), res);
                             $$.pos = res;
-                            $$.tipo = $2.tipo;
+                            $$.type = $2.type;
+                            $$.size = $2.size;
                         }
                 | incrementOperator ID_
                         {
-                            // Do we have to make the program failsave 
-                            // Example: ID_ = struct
-                            TIPO_ARG res;
-                            $$.tipo = T_ENTERO;
-                            res = getSymbolPosition($2);
+                            SIMB s = getSymbol($2);
+                            TIPO_ARG res = crArgPosicion(s.nivel, s.desp);
+                            $$.type = T_ENTERO;
+                            $$.size = 1;
                             $$.pos = crArgPosicion(level, creaVarTemp());
                             emite($1, res, crArgEntero(1), res);
                             emite(EASIG, res, crArgNulo(), $$.pos);
@@ -640,7 +667,8 @@ SIMB getSymbol(char *name) {
                         {
                             TIPO_ARG posArray = getSymbolPosition($1);
                             $$.pos = crArgPosicion(level,creaVarTemp()); 
-                            $$.tipo = T_ENTERO;
+                            $$.type = T_ENTERO;
+                            $$.size = 1;
                             emite(EAV, posArray, $3.pos, $$.pos);
                         }
                 /* Record access */
@@ -648,16 +676,23 @@ SIMB getSymbol(char *name) {
                         {
                             SIMB simStruct = getSymbol($1);
                             REG campo = obtenerInfoCampo(simStruct.ref, $3);
+                            if(campo.tipo == T_ERROR) {
+                                char buffer[200];
+                                sprintf(buffer, "The struct %s does not contain a field named %s", $1, $3);
+                                yyerror(buffer);
+                            }
                             int despTotal = simStruct.desp + campo.desp;
-                            $$.tipo = campo.tipo;
+                            $$.type = campo.tipo;
+                            $$.size = 1; // Fields don't have sizes in the TDS. So assume it is an integer
                             $$.pos = crArgPosicion(simStruct.nivel,despTotal); 
                         }
                 /* Increment/Decrement */
                 | ID_ incrementOperator 
                         {
                             TIPO_ARG posId = getSymbolPosition($1);
-                            $$.tipo = T_ENTERO;
+                            $$.type = T_ENTERO;
                             $$.pos = crArgPosicion(level, creaVarTemp()); 
+                            $$.size = 1;
                             emite(EASIG, posId, crArgNulo(), $$.pos);
                             emite($2, posId, crArgEntero(1), posId);
                         }
@@ -671,32 +706,58 @@ SIMB getSymbol(char *name) {
                         {
                             SIMB s = obtenerSimbolo($1);
                             INF fun = obtenerInfoFuncion(s.ref);
+                            if(s.categoria == NULO) {
+                                char buffer[200];
+                                sprintf(buffer, "The function %s is not declared", $1);
+                                yyerror(buffer);
+                            }
+                            else if(comparaDominio(s.ref, $4.ref) == FALSE) {
+                                char buffer[200];
+                                sprintf(buffer, "Invalid parameters at call of function %s", $1);
+                                yyerror(buffer);
+
+                            }
                             emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(s.desp));
                             emite(DECTOP, crArgNulo(), crArgNulo(), crArgEntero(fun.tparam));
                             $$.pos = crArgPosicion(level, creaVarTemp()); 
+                            $$.type = s.tipo;
                             emite(EPOP, crArgNulo(), crArgNulo(), $$.pos);
+                            $$.size = 1; // Assume it is an integer. Although the grammar accepts structs too
                         }
                 | PAR_OPEN_ expression PAR_CLOSE_ 
                         {
                             $$.pos = $2.pos;
-                            $$.tipo = $2.tipo;
+                            $$.type = $2.type;
+                            $$.size = $2.size;
                         }
                 | ID_ 
                         {
                             SIMB s = getSymbol($1);
                             $$.pos = crArgPosicion(s.nivel, s.desp); 
-                            $$.tipo = s.tipo;
+                            $$.type = s.tipo;
+                            DIM arrayInfo;
+                            switch(s.tipo) {
+                                case T_ENTERO: 
+                                case T_LOGICO:
+                                    $$.size = 1; break;
+                                case T_RECORD:
+                                    $$.size = 1; break; // This is most likely wrong. But SIMB does not save the size and there is no possibility to iterate through the fields
+                                case T_ARRAY:
+                                    arrayInfo = obtenerInfoArray(s.ref);
+                                    $$.size = arrayInfo.nelem; break;
+                            }
                         }
                 | CTI_ {
-                    $$.tipo = T_ENTERO;
+                    $$.type = T_ENTERO;
                     /* This is not a position, but we can use an integer everywhere where
                      * we would use this temporary variable. So we can save one temporary variable.
                      * This makes the code cleaner.
                      */
                     $$.pos = crArgEntero($1);
+                    $$.size = 1;
 
                 };
-	actualParameters : /* eps */ | actualParameterList
+	actualParameters : /* eps */ {$$.ref = insertaInfoDominio(-1, T_VACIO);} | actualParameterList {$$.ref = $1.ref;}
                     /*
                      * According to the C calling convention:
                      * fn(1,2,3)
@@ -707,10 +768,12 @@ SIMB getSymbol(char *name) {
 	actualParameterList : expression 
                                 {
                                     emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
+                                    $$.ref = insertaInfoDominio(-1, $1.type);
                                 }
                         | expression COMMA actualParameterList  
                                 {
                                     emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
+                                    $$.ref = insertaInfoDominio($3.ref, $1.type);
                                 };
 	asignationOperator : ASIGN 
                                 {
