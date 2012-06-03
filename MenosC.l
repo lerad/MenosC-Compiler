@@ -58,13 +58,17 @@ LETTER      [a-zA-Z_]
 ","  { return COMMA; }
 
 
-{REAL}  {yylval.integer = truncCreal(); return CTI_;}
+{REAL}  {yylval.integer = truncCreal(); printf("Warning: Conversion from real to int in line %i\n", yylineno);  return CTI_;}
 {DIGIT}+ { yylval.integer =createCnumber(); return CTI_; }
 {LETTER}({LETTER}|{DIGIT})* {  yylval.id = createId(); return ID_; }
 "//"[^\n]* 
 
 
-. { printf("ERROR"); exit(1); }
+. { 
+  char buffer[200];
+  sprintf(buffer, "Error: Unknown character '%s' at line %i\n", yytext, yylineno);
+  yyerror(buffer);
+}
 
 %%
 
@@ -73,13 +77,14 @@ LETTER      [a-zA-Z_]
 char *createId()
 {
 
-	if(yyleng >MAX_LENGTH)
+	if(yyleng >MAX_LENGTH) {
+        printf("Warning: Identifier '%s' at line %i will be reduced to %i letters\n", yytext, yylineno, MAX_LENGTH); 
 		yyleng = MAX_LENGTH;
+    }
 	char *buffer = (char*)malloc(yyleng + 1); 
 	strncpy(buffer, yytext, yyleng);
-  buffer[yyleng] = '\0';
+    buffer[yyleng] = '\0';
 	return buffer;
-
 }
 
 int truncCreal()
