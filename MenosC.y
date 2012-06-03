@@ -290,6 +290,11 @@ SIMB getSymbol(char *name) {
                         } 
                     PAR_OPEN_  formalParameters PAR_CLOSE_  
                         {
+                            if($1.type != T_ENTERO) {
+                                char buffer[200];
+                                sprintf(buffer, "Return type of %s is not an integer", $2);
+                                yyerror(buffer);
+                            }
                             $$.returnType = $1.type;
                             $$.returnTypeRef = $1.ref;
                             $$.parameterRef = $5.parameterRef; /* $5, because the action counts too! */
@@ -314,6 +319,11 @@ SIMB getSymbol(char *name) {
                            * (-2 -parameterSize) would be nicer, but we don't know the parameterSize yet.
                            * So later, when we access an ID we check if it is a parameter and if this is the case we deduct -2 - parameterSize from it.
                            */
+                          if($1.type != T_ENTERO) {
+                                char buffer[200];
+                                sprintf(buffer, "Parameter %s is not an integer", $2);
+                                yyerror(buffer);
+                          }
 
                           declareSymbol($2, PARAMETRO , $1.type, 0, level, $1.ref); 
                           $$.desp =  $1.size;
@@ -321,6 +331,11 @@ SIMB getSymbol(char *name) {
                         }
                     | type ID_ COMMA formalParameterList 
                         {
+                          if($1.type != T_ENTERO) {
+                                char buffer[200];
+                                sprintf(buffer, "Parameter %s is not an integer", $2);
+                                yyerror(buffer);
+                          }
                           declareSymbol($2, PARAMETRO, $1.type, $4.desp, level, $1.ref);
                           $$.desp = $4.desp + $1.size;
                           $$.parameterRef = insertaInfoDominio($4.parameterRef, $1.type);
