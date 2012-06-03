@@ -17,7 +17,7 @@ const int MAX_LENGTH = 14; // maximum length of id in characters
 
 DIGIT      [0-9]
 REAL 	   {DIGIT}+.{DIGIT}+
-WHITESPACE [ \t\n]
+WHITESPACE [ \t]
 LETTER      [a-zA-Z_]
 
 %%
@@ -31,6 +31,7 @@ LETTER      [a-zA-Z_]
 "for"   { return FOR; }
 "struct" {return STRUCT; }
 {WHITESPACE}+ 
+"\n" {yylineno++;}
 "}"  { return CURLY_CLOSE_; }
 "{"  { return CURLY_OPEN_; }
 "]"  { return SQUARE_CLOSE_; }
