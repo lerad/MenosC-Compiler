@@ -29,6 +29,44 @@ extern int dvar; // Position of the next temporary variable
 // Contains the update-refs for the memory reservation (INCTOP)  at each level
 std::vector<std::list<int> > localPlaceUpdateList;
 
+
+/*
+ * Returns the posicion which belongs to the given ID
+ * Calls yyerror if it not defined. (Returns (0,0) than so parsing continues)
+ * If is a parameter, it adjust the position, so that it now fits into the parameter position of the memory
+ */
+TIPO_ARG getSymbolPosition(char *name) {
+    SIMB id = obtenerSimbolo(name);
+    if(id.categoria == NULO) {
+        printf("The variable %s is not declared.", name);
+        yyerror("The variable is not declared.");
+        return crArgPosicion(0,0);
+    }
+
+    if(id.categoria == PARAMETRO) {
+        INF fn = obtenerInfoFuncion(-1);
+        id.desp -= 2; // Return address and saved frame pointer
+        id.desp -= fn.tparam; // Starting space for the parameters
+
+    }
+    return crArgPosicion(id.nivel, id.desp);
+}
+
+// Makes the same as getSymbolPosition, but returns the SIMB struct
+SIMB getSymbol(char *name) {
+    SIMB id = obtenerSimbolo(name);
+    if(id.categoria == NULO) {
+        printf("The variable %s is not declared.", name);
+        yyerror("The variable is not declared.");
+    }
+
+    if(id.categoria == PARAMETRO) {
+        INF fn = obtenerInfoFuncion(-1);
+        id.desp -= 2; // Return address and saved frame pointer
+        id.desp -= fn.tparam; // Starting space for the parameters
+    }
+    return id;
+}
 %}
 %union {
     char *id;
@@ -257,18 +295,21 @@ std::vector<std::list<int> > localPlaceUpdateList;
 	formalParameterList : type ID_ 
                         { 
                           /* First reduction that happens. It is the reduction of the last parameter which is at the 
-                             deepest position of the stack */
-                          $$.desp =  - $1.size - 2;  /* -2  because of the return address and saved framepointer */ 
-                          insertaSimbolo($2, PARAMETRO , $1.type, $$.desp, level, $1.ref); 
+                           * deepest position of the stack. 
+                           * It gets the desplacement of 0. 
+                           * (-2 -parameterSize) would be nicer, but we don't know the parameterSize yet.
+                           * So later, when we access an ID we check if it is a parameter and if this is the case we deduct -2 - parameterSize from it.
+                           */
+
+                          insertaSimbolo($2, PARAMETRO , $1.type, 0, level, $1.ref); 
+                          $$.desp =  $1.size;
                           $$.parameterRef = insertaInfoDominio(-1, $1.type);
-                          printf("FP -> T ID. Desp(%s) = %i\n", $2, $$.desp);
                         }
                     | type ID_ COMMA formalParameterList 
                         {
-                          $$.desp = $4.desp - $1.size;
-                          insertaSimbolo($2, PARAMETRO, $1.type, $$.desp, level, $1.ref);
+                          insertaSimbolo($2, PARAMETRO, $1.type, $4.desp, level, $1.ref);
+                          $$.desp = $4.desp + $1.size;
                           $$.parameterRef = insertaInfoDominio($4.parameterRef, $1.type);
-                          printf("FP -> T ID , FP. Desp(%s) = %i\n", $2, $$.desp);
                         };
 	block : CURLY_OPEN_ 
                         {
@@ -354,15 +395,8 @@ std::vector<std::list<int> > localPlaceUpdateList;
 	expressionInstruction : SEMICOLON_ | expression SEMICOLON_;
 	ioInstruction : READ_ PAR_OPEN_ ID_ PAR_CLOSE_ SEMICOLON_ 
                         {
-                            SIMB id = obtenerSimbolo($3);
-                            if(id.categoria == NULO) {
-                                printf("The variable %s is not declared.", $3);
-                                yyerror("The variable is not declared.");
-                            }
-                            else {
-                                emite(EREAD, crArgNulo(), crArgNulo(), crArgPosicion(level, id.desp)); 
-                            }
-                            
+                            TIPO_ARG posId = getSymbolPosition($3); 
+                            emite(EREAD, crArgNulo(), crArgNulo(), posId); 
                         }
             | PRINT_ PAR_OPEN_ expression PAR_CLOSE_ SEMICOLON_ 
                         {
@@ -452,20 +486,13 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         }
             | ID_ asignationOperator expression 
                         {
-                            SIMB id = obtenerSimbolo($1);
-                            if(id.categoria == NULO) {
-                                printf("The variable %s is not declared.", $1);
-                                yyerror("Variable declaration failed");
-                            }
-                            else {
-                                emite(EASIG, $3.pos, crArgNulo(), crArgPosicion(id.nivel, id.desp)); 
-                                $$.pos = crArgPosicion(level, id.desp);
-                            }
+                            TIPO_ARG posId = getSymbolPosition($1);
+                            emite(EASIG, $3.pos, crArgNulo(), posId); 
+                            $$.pos = posId;
                         }
             | ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ asignationOperator expression 
                         {
-                            SIMB s = obtenerSimbolo($1);
-                            TIPO_ARG posArray = crArgPosicion(s.nivel, s.desp);
+                            TIPO_ARG posArray = getSymbolPosition($1);
                             TIPO_ARG varTemp = crArgPosicion(level, creaVarTemp());
                             switch($5) 
                             {
@@ -491,7 +518,7 @@ std::vector<std::list<int> > localPlaceUpdateList;
 
             | ID_ POINT_ ID_ asignationOperator expression 
                         {
-                            SIMB simStruct = obtenerSimbolo($1);
+                            SIMB simStruct = getSymbol($1);
                             REG campo = obtenerInfoCampo(simStruct.ref, $3);
                             int despTotal = simStruct.desp + campo.desp;
                             $$.tipo = campo.tipo;
@@ -578,21 +605,18 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         {
                             // Do we have to make the program failsave 
                             // Example: ID_ = struct
-                            SIMB sim = obtenerSimbolo($2); 
                             TIPO_ARG res;
                             $$.tipo = T_ENTERO;
-                            res = crArgPosicion(sim.nivel, sim.desp);
+                            res = getSymbolPosition($2);
                             $$.pos = crArgPosicion(level, creaVarTemp());
                             emite($1, res, crArgEntero(1), res);
                             emite(EASIG, res, crArgNulo(), $$.pos);
-                            $$.pos = crArgPosicion(level,0); // TODO: implement
                         };
 	suffixExpression :
                 /* Array access */
                  ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ 
                         {
-                            SIMB s = obtenerSimbolo($1);
-                            TIPO_ARG posArray = crArgPosicion(s.nivel, s.desp);
+                            TIPO_ARG posArray = getSymbolPosition($1);
                             $$.pos = crArgPosicion(level,creaVarTemp()); 
                             $$.tipo = T_ENTERO;
                             emite(EAV, posArray, $3.pos, $$.pos);
@@ -600,20 +624,18 @@ std::vector<std::list<int> > localPlaceUpdateList;
                 /* Record access */
                 | ID_ POINT_ ID_ 
                         {
-                            SIMB simStruct = obtenerSimbolo($1);
+                            SIMB simStruct = getSymbol($1);
                             REG campo = obtenerInfoCampo(simStruct.ref, $3);
                             int despTotal = simStruct.desp + campo.desp;
                             $$.tipo = campo.tipo;
-                            $$.pos = crArgPosicion(simStruct.nivel,despTotal); // TODO: implement
+                            $$.pos = crArgPosicion(simStruct.nivel,despTotal); 
                         }
                 /* Increment/Decrement */
                 | ID_ incrementOperator 
                         {
-                            // 
-                            SIMB sim = obtenerSimbolo($1);
-                            TIPO_ARG posId = crArgPosicion(sim.nivel, sim.desp);
+                            TIPO_ARG posId = getSymbolPosition($1);
                             $$.tipo = T_ENTERO;
-                            $$.pos = crArgPosicion(level, creaVarTemp()); // TODO: implement
+                            $$.pos = crArgPosicion(level, creaVarTemp()); 
                             emite(EASIG, posId, crArgNulo(), $$.pos);
                             emite($2, posId, crArgEntero(1), posId);
                         }
@@ -625,7 +647,6 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         }
                             actualParameters PAR_CLOSE_ 
                         {
-                            // TODO: implement function call
                             SIMB s = obtenerSimbolo($1);
                             INF fun = obtenerInfoFuncion(s.ref);
                             emite(CALL, crArgNulo(), crArgNulo(), crArgEtiqueta(s.desp));
@@ -640,8 +661,8 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         }
                 | ID_ 
                         {
-                            SIMB s = obtenerSimbolo($1);
-                            $$.pos = crArgPosicion(s.nivel, s.desp); // TODO: Implement
+                            SIMB s = getSymbol($1);
+                            $$.pos = crArgPosicion(s.nivel, s.desp); 
                             $$.tipo = s.tipo;
                         }
                 | CTI_ {
