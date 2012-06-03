@@ -16,10 +16,9 @@ int showTDS = FALSE;
 int numErrores = 0;
 int level = 0;
 int globalDesp = 0; // Desplacement of global variables
-int parameterSize = 0; // TODO: is there any better way to do this??
 
-int globalVariableReservationRef = 0;
-int mainCallRef = 0;
+int globalVariableReservationRef = 0; // Refers to the instructions which reserves the space for global variables
+int mainCallRef = 0; // Refers to the instruction which calls the main function
 
 const int INTEGER_SIZE = 1;
 
@@ -27,7 +26,7 @@ extern int si; // Position of the next instruction
 extern int dvar; // Position of the next temporary variable
 
 
-// Contains the update-refs for each level
+// Contains the update-refs for the memory reservation (INCTOP)  at each level
 std::vector<std::list<int> > localPlaceUpdateList;
 
 %}
@@ -247,7 +246,6 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         };
 	formalParameters : /* eps */ 
                         { 
-                            parameterSize = 0;
                             $$.desp = 0; 
                             $$.parameterRef = insertaInfoDominio(-1, T_VACIO);
                         }
@@ -258,17 +256,19 @@ std::vector<std::list<int> > localPlaceUpdateList;
                         };
 	formalParameterList : type ID_ 
                         { 
-                          parameterSize += $1.size;
-                          $$.desp =  - $1.size - 2;  /* -2 = without stackpointer and saved framepointer */ 
+                          /* First reduction that happens. It is the reduction of the last parameter which is at the 
+                             deepest position of the stack */
+                          $$.desp =  - $1.size - 2;  /* -2  because of the return address and saved framepointer */ 
                           insertaSimbolo($2, PARAMETRO , $1.type, $$.desp, level, $1.ref); 
                           $$.parameterRef = insertaInfoDominio(-1, $1.type);
+                          printf("FP -> T ID. Desp(%s) = %i\n", $2, $$.desp);
                         }
                     | type ID_ COMMA formalParameterList 
                         {
-                          parameterSize += $1.size;
                           $$.desp = $4.desp - $1.size;
                           insertaSimbolo($2, PARAMETRO, $1.type, $$.desp, level, $1.ref);
                           $$.parameterRef = insertaInfoDominio($4.parameterRef, $1.type);
+                          printf("FP -> T ID , FP. Desp(%s) = %i\n", $2, $$.desp);
                         };
 	block : CURLY_OPEN_ 
                         {
@@ -430,8 +430,9 @@ std::vector<std::list<int> > localPlaceUpdateList;
                               * Stackpointer -1 - 2 (Ret + Old FP) - parameterSize
                               * The -1 is because the stackpointer points to the next element. So SP - 1 is the last element on the stack.
                               */
-                             TIPO_ARG posReturn = crArgPosicion(level, -parameterSize - 3);
-                             DebugStream("Posreturn: " << parameterSize - 1 );
+                             INF fn = obtenerInfoFuncion(-1); // Current function
+                             TIPO_ARG posReturn = crArgPosicion(level, -fn.tparam - 3);
+                             DebugStream("Posreturn: " << fn.tparam - 1 );
                              emite(EASIG, $2.pos, crArgNulo(), posReturn);
                              // We return from the complete function.
                              // This means we have to remove the place from each level:
@@ -619,8 +620,6 @@ std::vector<std::list<int> > localPlaceUpdateList;
                 /* Function call */
                 | ID_ PAR_OPEN_ 
                         {
-                            // TODO: save space on stack for the return value
-                            // TODO: Can we land here ONLY during a function call?
                             emite(EPUSH,crArgNulo(), crArgNulo(), crArgEntero(0)); // Reserve space for the return value
     
                         }
@@ -655,6 +654,13 @@ std::vector<std::list<int> > localPlaceUpdateList;
 
                 };
 	actualParameters : /* eps */ | actualParameterList
+                    /*
+                     * According to the C calling convention:
+                     * fn(1,2,3)
+                     * EPUSH 3
+                     * EPUSH 2
+                     * EPUSH 1
+                     */
 	actualParameterList : expression 
                                 {
                                     emite(EPUSH, crArgNulo(), crArgNulo(), $1.pos);
