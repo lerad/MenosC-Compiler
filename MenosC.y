@@ -488,7 +488,17 @@ SIMB getSymbol(char *name) {
             | ID_ asignationOperator expression 
                         {
                             TIPO_ARG posId = getSymbolPosition($1);
-                            emite(EASIG, $3.pos, crArgNulo(), posId); 
+                            switch($2) {
+                                case ASIGN:
+                                    emite(EASIG, $3.pos, crArgNulo(), posId);
+                                    break;
+                                case ADD_ASIGN:
+                                    emite(ESUM, posId, $3.pos, posId);
+                                    break;
+                                case MINUS_ASIGN:
+                                    emite(EDIF, posId, $3.pos, posId);
+                                    break;
+                            }
                             $$.pos = posId;
                         }
             | ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ asignationOperator expression 
@@ -523,8 +533,19 @@ SIMB getSymbol(char *name) {
                             REG campo = obtenerInfoCampo(simStruct.ref, $3);
                             int despTotal = simStruct.desp + campo.desp;
                             $$.tipo = campo.tipo;
-                            $$.pos = crArgPosicion(simStruct.nivel,despTotal); 
-                            emite(EASIG, $5.pos, crArgNulo(), $$.pos);
+                            TIPO_ARG posField = crArgPosicion(simStruct.nivel,despTotal); 
+                            $$.pos = posField;
+                            switch($4) {
+                                case ASIGN:
+                                    emite(EASIG, $5.pos, crArgNulo(), posField);
+                                    break;
+                                case ADD_ASIGN:
+                                    emite(ESUM, posField, $5.pos, posField);
+                                    break;
+                                case MINUS_ASIGN:
+                                    emite(EDIF, posField, $5.pos, posField);
+                                    break;
+                            }
                         };
 	equalityExpression : relationalExpression 
                         {
