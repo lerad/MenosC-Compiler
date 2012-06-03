@@ -251,7 +251,8 @@ SIMB getSymbol(char *name) {
                         {
                             // We have to insert the function already here into the table of symbols.
                             // Otherwise we couldn't use it inside the block and recursion wouldn't work.
-                            insertaSimbolo($1.name, FUNCION, $1.returnType, $1.desp, level, $1.parameterRef);  
+                            declareSymbol($1.name, FUNCION, $1.returnType, $1.desp, level, $1.parameterRef);  
+                            
                         }        
                     block  
                         {
@@ -301,13 +302,13 @@ SIMB getSymbol(char *name) {
                            * So later, when we access an ID we check if it is a parameter and if this is the case we deduct -2 - parameterSize from it.
                            */
 
-                          insertaSimbolo($2, PARAMETRO , $1.type, 0, level, $1.ref); 
+                          declareSymbol($2, PARAMETRO , $1.type, 0, level, $1.ref); 
                           $$.desp =  $1.size;
                           $$.parameterRef = insertaInfoDominio(-1, $1.type);
                         }
                     | type ID_ COMMA formalParameterList 
                         {
-                          insertaSimbolo($2, PARAMETRO, $1.type, $4.desp, level, $1.ref);
+                          declareSymbol($2, PARAMETRO, $1.type, $4.desp, level, $1.ref);
                           $$.desp = $4.desp + $1.size;
                           $$.parameterRef = insertaInfoDominio($4.parameterRef, $1.type);
                         };

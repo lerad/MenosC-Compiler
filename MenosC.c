@@ -10,3 +10,13 @@ void declareVariable(int n, char *nom, int type, int desp, int size, int ref) {
     }
     DebugStream("Variable Declaration: " << nom << " Class: " << VARIABLE << ", Type: " << type << " Desp: " << desp << " Level: "<< n <<" Ref:" << ref); 
 }
+
+void declareSymbol(char *nom, int category, int type, int desp, int level, int ref) 
+{
+    int result = insertaSimbolo(nom, category, type, desp, level, ref);
+    if(result == 0) {
+        char buffer[200];
+        sprintf(buffer, "Multiple declaration of %s at line %i", nom, yylineno);
+        yyerror(buffer);
+    }
+}
