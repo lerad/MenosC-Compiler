@@ -229,6 +229,9 @@ SIMB getSymbol(char *name) {
                                 sprintf(buffer, "Array %s is declared with a length of 0", $2);
                                 yyerror(buffer);
                             }
+                            if($1.type != T_ENTERO) {
+                                yyerror("Arrays may only consists of integers");
+                            }
                             $$.type = T_ARRAY; 
 				            $$.name = $2; 
 				            $$.size = $1.size * $4; 
@@ -249,12 +252,17 @@ SIMB getSymbol(char *name) {
                         } ; 
 	fieldList : variableDeclaration  
                         {  
-                            // When this is a struct: Is there any problem, that the ref to the struct's fields is missing?
+                            if ($1.type != T_ENTERO) {
+                                yyerror("Records may only contain integers");
+                            }
                             $$.fieldsRef = insertaInfoCampo(-1, $1.name, $1.type, 0); 
                             $$.desp = $1.size;
                         };
             | fieldList variableDeclaration
                         {
+                            if ($2.type != T_ENTERO) {
+                                yyerror("Records may only contain integers");
+                            }
                             int result = insertaInfoCampo($1.fieldsRef, $2.name, $2.type, $1.desp);
                             if(result == -1) { yyerror("Multiple uses of the same identifier"); }
                             $$.desp = $1.desp + $2.size;
@@ -516,7 +524,8 @@ SIMB getSymbol(char *name) {
                         }
             | ID_ asignationOperator expression 
                         {
-                            TIPO_ARG posId = getSymbolPosition($1);
+                            SIMB s = getSymbol($1);
+                            TIPO_ARG posId = crArgPosicion(s.nivel, s.desp);
                             switch($2) {
                                 case ASIGN:
                                     emite(EASIG, $3.pos, crArgNulo(), posId);
@@ -528,12 +537,16 @@ SIMB getSymbol(char *name) {
                                     emite(EDIF, posId, $3.pos, posId);
                                     break;
                             }
+                            if(s.tipo != $3.type) {
+                                yyerror("Assignation with wrong type");
+                            }
                             $$.pos = posId;
                             $$.type = T_ENTERO;
                             $$.size = 1; 
                         }
             | ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ asignationOperator expression 
                         {
+                            if($6.type != T_ENTERO) yyerror("Expression is no integer");
                             TIPO_ARG posArray = getSymbolPosition($1);
                             TIPO_ARG varTemp = crArgPosicion(level, creaVarTemp());
                             switch($5) 
@@ -561,6 +574,7 @@ SIMB getSymbol(char *name) {
 
             | ID_ POINT_ ID_ asignationOperator expression 
                         {
+                            if( $5.type != T_ENTERO) yyerror("Expression is no integer");
                             SIMB simStruct = getSymbol($1);
                             REG campo = obtenerInfoCampo(simStruct.ref, $3);
                             int despTotal = simStruct.desp + campo.desp;
@@ -669,6 +683,11 @@ SIMB getSymbol(char *name) {
                 | incrementOperator ID_
                         {
                             SIMB s = getSymbol($2);
+                            if(s.tipo != T_ENTERO) {
+                                char buffer[200];
+                                sprintf(buffer, "%s is no integer", $2);
+                                yyerror(buffer);
+                            }
                             TIPO_ARG res = crArgPosicion(s.nivel, s.desp);
                             $$.type = T_ENTERO;
                             $$.size = 1;
@@ -680,7 +699,13 @@ SIMB getSymbol(char *name) {
                 /* Array access */
                  ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ 
                         {
-                            TIPO_ARG posArray = getSymbolPosition($1);
+                            SIMB s = getSymbol($1);
+                            TIPO_ARG posArray = crArgPosicion(s.nivel, s.desp);
+                            if(s.tipo != T_ARRAY) {
+                                char buffer[200];
+                                sprintf(buffer, "%s is no array", $1);
+                                yyerror(buffer);
+                            }
                             $$.pos = crArgPosicion(level,creaVarTemp()); 
                             $$.type = T_ENTERO;
                             $$.size = 1;
@@ -690,6 +715,11 @@ SIMB getSymbol(char *name) {
                 | ID_ POINT_ ID_ 
                         {
                             SIMB simStruct = getSymbol($1);
+                            if(simStruct.tipo != T_RECORD) {
+                                char buffer[200];
+                                sprintf(buffer, "%s is no record", $1);
+                                yyerror(buffer);
+                            }
                             REG campo = obtenerInfoCampo(simStruct.ref, $3);
                             if(campo.tipo == T_ERROR) {
                                 char buffer[200];
@@ -704,7 +734,13 @@ SIMB getSymbol(char *name) {
                 /* Increment/Decrement */
                 | ID_ incrementOperator 
                         {
-                            TIPO_ARG posId = getSymbolPosition($1);
+                            SIMB s = getSymbol($1);
+                            TIPO_ARG posId = crArgPosicion(s.nivel, s.desp);
+                            if(s.tipo != T_ENTERO) {
+                                char buffer[200];
+                                sprintf(buffer, "%s is no integer", $1);
+                                yyerror(buffer);
+                            }
                             $$.type = T_ENTERO;
                             $$.pos = crArgPosicion(level, creaVarTemp()); 
                             $$.size = 1;
