@@ -16,7 +16,7 @@ const int MAX_LENGTH = 14; // maximum length of id in characters
 /* %option c++ */
 
 DIGIT      [0-9]
-REAL 	   {DIGIT}+.{DIGIT}+
+REAL 	   {DIGIT}+\.{DIGIT}+
 WHITESPACE [ \t]
 LETTER      [a-zA-Z_]
 
