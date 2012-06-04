@@ -441,6 +441,9 @@ SIMB getSymbol(char *name) {
                         };
 	selectionInstruction : IF PAR_OPEN_ expression PAR_CLOSE_  
                         { 
+                            if($3.type != T_LOGICO) {
+                                yyerror("Condition for if is not of type logical");
+                            }
                             int ref = creaLans(si);
                             $<hasRef>$ = ref;
                             emite(EIGUAL, $3.pos, crArgEntero(0), crArgEtiqueta(0));
@@ -467,6 +470,7 @@ SIMB getSymbol(char *name) {
                         expression 
                         {
                             $<forHelper>$.ref = creaLans(si);
+                            if ($6.type != T_LOGICO) yyerror("Loop expression is no logical expression");
                             emite(EIGUAL, $6.pos, crArgEntero(0), crArgEtiqueta(0)); // Check if loop condition false, then jump to final
                         }
                         SEMICOLON_ 
@@ -501,6 +505,9 @@ SIMB getSymbol(char *name) {
                               * Stackpointer -1 - 2 (Ret + Old FP) - parameterSize
                               * The -1 is because the stackpointer points to the next element. So SP - 1 is the last element on the stack.
                               */
+                             if($2.type != T_ENTERO) {
+                                yyerror("Return value is no integer");
+                             }
                              INF fn = obtenerInfoFuncion(-1); // Current function
                              TIPO_ARG posReturn = crArgPosicion(level, -fn.tparam - 3);
                              DebugStream("Posreturn: " << fn.tparam - 1 );
@@ -537,17 +544,19 @@ SIMB getSymbol(char *name) {
                                     emite(EDIF, posId, $3.pos, posId);
                                     break;
                             }
-                            if(s.tipo != $3.type) {
-                                yyerror("Assignation with wrong type");
+                            if(s.tipo != T_ENTERO || $3.type != T_ENTERO) {
+                                yyerror("Assignation is only allowed for integers");
                             }
                             $$.pos = posId;
-                            $$.type = T_ENTERO;
+                            $$.type = s.tipo;
                             $$.size = 1; 
                         }
             | ID_ SQUARE_OPEN_ expression SQUARE_CLOSE_ asignationOperator expression 
                         {
                             if($6.type != T_ENTERO) yyerror("Expression is no integer");
-                            TIPO_ARG posArray = getSymbolPosition($1);
+                            SIMB s = getSymbol($1);
+                            if(s.tipo != T_ARRAY) yyerror("Array access to no array");
+                            TIPO_ARG posArray = crArgPosicion(s.nivel, s.desp);
                             TIPO_ARG varTemp = crArgPosicion(level, creaVarTemp());
                             switch($5) 
                             {
@@ -581,7 +590,7 @@ SIMB getSymbol(char *name) {
                             TIPO_ARG posField = crArgPosicion(simStruct.nivel,despTotal); 
                             $$.pos = posField;
                             $$.type = campo.tipo;
-                            $$.size = 1; // Fields don't have sizes in the TDS
+                            $$.size = 1; 
                             switch($4) {
                                 case ASIGN:
                                     emite(EASIG, $5.pos, crArgNulo(), posField);
@@ -705,6 +714,9 @@ SIMB getSymbol(char *name) {
                                 char buffer[200];
                                 sprintf(buffer, "%s is no array", $1);
                                 yyerror(buffer);
+                            }
+                            if($3.type != T_ENTERO) {
+                                yyerror("Using non integer as array index");
                             }
                             $$.pos = crArgPosicion(level,creaVarTemp()); 
                             $$.type = T_ENTERO;
