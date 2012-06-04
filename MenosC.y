@@ -111,7 +111,7 @@ SIMB getSymbol(char *name) {
     } expression;
     struct {
         int oldDvar;
-    } block; // TODO: Rename as currently this is not used for the block-element. (Although it has a close connection)
+    } block; 
     struct {
         int label;
         int ref;
